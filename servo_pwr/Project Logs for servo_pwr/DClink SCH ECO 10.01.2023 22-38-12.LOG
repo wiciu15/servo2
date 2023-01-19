@@ -1,0 +1,19 @@
+Replace Part C39 Polarised Capacitor in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with Polarised Capacitor from Celestial.DbLib
+Replace Part C40 Polarised Capacitor in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with Polarised Capacitor from Celestial.DbLib
+Replace Part C43 3.3u/600V in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with 3.3u/600V from C4AQHBU4330P1WJ.SchLib
+Replace Part D1 10A6 in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with 10A6 from 10A6.SchLib
+Replace Part D2 Diode in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with Diode from Celestial.DbLib
+Replace Part DB1 Component_1 in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with Component_1 from GBJ2506.SchLib
+Replace Part F1 Fuse in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with Fuse from FUSE 04450001N.SchLib
+Replace Part IC2 DIODES INC MOSFET N-CH SOT-23-3 in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with DIODES INC MOSFET N-CH SOT-23-3 from Celestial.DbLib
+Replace Part L3 SC-18-25J in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with SC-18-25J from SC18-25J.SchLib
+Replace Part Q1 STGW30NC60KD in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with STGW30NC60KD from STGW30NC60KD.SchLib
+Replace Part R22 Resistor in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with Resistor from Celestial.DbLib
+Replace Part R23 CRL5W-33k in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with CRL5W-33k from CRL5W-33k.SchLib
+Replace Part R24 CRL5W-33k in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with CRL5W-33k from CRL5W-33k.SchLib
+Replace Part R25 Resistor in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with Resistor from Celestial.DbLib
+Replace Part R26 Resistor in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with Resistor from Celestial.DbLib
+Replace Part R28 PRMAAWJW470B00 in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with PRMAAWJW470B00 from prmaawjw470b00.SchLib
+Replace Part R29 Resistor in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with Resistor from Celestial.DbLib
+Replace Part RL1 G2R-1A-E in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with G2R-1A-E from G2R-1A-E.SchLib
+Replace Part U16 TLP701 in C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.SchDoc with TLP701 from Toshiba optocoupler.SchLib

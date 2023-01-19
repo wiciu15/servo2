@@ -1,0 +1,75 @@
+# Created by Ultra Librarian Gold 8.3.307 Copyright © 1999-2021
+# Frank Frank, Accelerated Designs
+
+StartFootprints
+
+Footprint (Name "TBA 2_SINGLE_TRP")
+Pad (Name "1") (Location 0.00000908, 0.00002202) (HoleSize 30) (Surface False) (Rotation 0) (ExpandMask 0)
+PadShape (Size 50, 50) (Shape Rectangular) (Layer Top)
+PadShape (Size 50, 50) (Shape Rectangular) (Layer Bottom)
+PadShape (Size 50, 50) (Shape Rectangular) (Layer MidLayer)
+EndPad
+Pad (Name "2") (Location 100.00000908, 0.00002202) (HoleSize 30) (Surface False) (Rotation 0) (ExpandMask 0)
+PadShape (Size 50, 50) (Shape Rounded) (Layer Top)
+PadShape (Size 50, 50) (Shape Rounded) (Layer Bottom)
+PadShape (Size 50, 50) (Shape Rounded) (Layer MidLayer)
+EndPad
+Pad (Name "4") (Location 300.00000908, 0.00002202) (HoleSize 30) (Surface False) (Rotation 0) (ExpandMask 0)
+PadShape (Size 50, 50) (Shape Rounded) (Layer Top)
+PadShape (Size 50, 50) (Shape Rounded) (Layer Bottom)
+PadShape (Size 50, 50) (Shape Rounded) (Layer MidLayer)
+EndPad
+Pad (Name "6") (Location 500.00000908, 0.00002202) (HoleSize 30) (Surface False) (Rotation 0) (ExpandMask 0)
+PadShape (Size 50, 50) (Shape Rounded) (Layer Top)
+PadShape (Size 50, 50) (Shape Rounded) (Layer Bottom)
+PadShape (Size 50, 50) (Shape Rounded) (Layer MidLayer)
+EndPad
+Line (Width 6) (Start -104.64569092, -250.05117798) (End -104.64569092, 68.94882202) (Layer Mechanical15) 
+Line (Width 6) (Start -104.64569092, 68.94882202) (End 685.35430908, 68.94882202) (Layer Mechanical15) 
+Line (Width 6) (Start 685.35430908, 68.94882202) (End 685.35430908, -250.05117798) (Layer Mechanical15) 
+Line (Width 6) (Start 685.35430908, -250.05117798) (End -104.64569092, -250.05117798) (Layer Mechanical15) 
+Polygon (PointCount 4) (Layer Mechanical15) 
+Point (-104.64569092, -250.05117798)
+Point (-104.64569092, 68.94882202)
+Point (685.35430908, 68.94882202)
+Point (685.35430908, -250.05117798)
+EndPolygon
+Polygon (PointCount 4) (Layer Mechanical5) 
+Point (-219.64569092, -365.05117798)
+Point (-219.64569092, 183.94882202)
+Point (800.35430908, 183.94882202)
+Point (800.35430908, -365.05117798)
+EndPolygon
+Line (Width 6) (Start -99.64569092, -245.05117798) (End 680.35430908, -245.05117798) (Layer TopOverlay) 
+Line (Width 6) (Start 680.35430908, -245.05117798) (End 680.35430908, 63.94882202) (Layer TopOverlay) 
+Line (Width 6) (Start 680.35430908, 63.94882202) (End -99.64569092, 63.94882202) (Layer TopOverlay) 
+Line (Width 6) (Start -99.64569092, 63.94882202) (End -99.64569092, -245.05117798) (Layer TopOverlay) 
+Text (Location -147.14569092, -25) (Height 50) (Width 3) (Rotation 0) (Layer TopOverlay) (Value "*")
+Line (Width 1) (Start -94.64569092, -240.05117798) (End 675.35430908, -240.05117798) (Layer Mechanical13) 
+Line (Width 1) (Start 675.35430908, -240.05117798) (End 675.35430908, 58.94882202) (Layer Mechanical13) 
+Line (Width 1) (Start 675.35430908, 58.94882202) (End -94.64569092, 58.94882202) (Layer Mechanical13) 
+Line (Width 1) (Start -94.64569092, 58.94882202) (End -94.64569092, -240.05117798) (Layer Mechanical13) 
+Text (Location -97.14569092, -25) (Height 50) (Width 3) (Rotation 0) (Layer Mechanical13) (Value "*")
+Step (Name TBA 2_SINGLE_TRP.step)
+EndFootprint
+EndFootprints
+
+StartComponents
+
+Component (Name "TBA 2-0513") (PartCount 1) (DesPrefix "U?")
+Pin (Location 300, 0) (Rotation 180) (PinType Power) (Length 300) (Width 0) (Designator Visible "1") (Name Visible "+VIN(VCC)") (PinSwap 0) (PartSwap 0) (PinSeq 1) (Part 1)
+Pin (Location 300, -100) (Rotation 180) (PinType Power) (Length 300) (Width 0) (Designator Visible "2") (Name Visible "-VIN(GND)") (PinSwap 0) (PartSwap 0) (PinSeq 2) (Part 1)
+Pin (Location 2900, -100) (Rotation 0) (PinType Output) (Length 300) (Width 0) (Designator Visible "4") (Name Visible "-VOUT") (PinSwap 0) (PartSwap 0) (PinSeq 3) (Part 1)
+Pin (Location 2900, 0) (Rotation 0) (PinType Output) (Length 300) (Width 0) (Designator Visible "6") (Name Visible "+VOUT") (PinSwap 0) (PartSwap 0) (PinSeq 4) (Part 1)
+Rectangle (Width 5) (Start 300, -400) (End 2900, 300) (Part 1)
+Parameter (Name "Copyright") (Location 0, 0) (Height 50) (Rotation 0) (Justification Center) (Value "Copyright (C) 2022 Ultra Librarian. All rights reserved.") (Part 1)
+Parameter (Name "Mfr_Name") (Location 0, 0) (Height 50) (Rotation 0) (Justification Center) (Value "Traco Power") (Part 1)
+Parameter (Name "Manufacturer_Part_Number") (Location 0, 0) (Height 50) (Rotation 0) (Justification Center) (Value "TBA 2-0513") (Part 1)
+Parameter (Name "Digi-Key_Part_Number_1") (Location 0, 0) (Height 50) (Rotation 0) (Justification Center) (Value "1951-3431-ND") (Part 1)
+Parameter (Name "RefDes") (Location 1600, 500) (Height 82) (Rotation 0) (Justification Center) (Value "RefDes") (Part 1)
+Parameter (Name "Type") (Location 1600, 400) (Height 82) (Rotation 0) (Justification Center) (Value "DEV") (Part 1)
+Description (Value "No Description Available") (Part 1)
+Comment (Value "TBA 2-0513") (Part 1)
+Footprint (Name "TBA 2_SINGLE_TRP")
+EndComponent
+EndComponents

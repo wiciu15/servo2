@@ -1,0 +1,39 @@
+Circuit: * C:\Users\Wiktor\Documents\servo\servo_pwr\DClink.asc
+
+C6: Increased Cpar to 4.7e-010
+C8: Increased Cpar to 4.7e-014
+C7: Increased Cpar to 4.7e-014
+C5: Increased Cpar to 4.7e-014
+C4: Increased Cpar to 4.7e-010
+C3: Increased Cpar to 4.7e-012
+C2: Increased Cpar to 4.7e-010
+C1: Increased Cpar to 4.7e-010
+WARNING: Node NC_01 is floating.
+WARNING: Node NC_02 is floating.
+WARNING: Node N002 is floating.
+WARNING: Node NC_03 is floating.
+WARNING: Node NC_04 is floating.
+
+WARNING: Less than two connections to node NC_01.  This node is used by C4.
+WARNING: Less than two connections to node NC_02.  This node is used by C4.
+WARNING: Less than two connections to node NC_03.  This node is used by C6.
+WARNING: Less than two connections to node NC_04.  This node is used by C6.
+.OP point found by inspection.
+
+Date: Tue Jan 03 21:09:42 2023
+Total elapsed time: 3.911 seconds.
+
+tnom = 27
+temp = 27
+method = modified trap
+totiter = 1470295
+traniter = 1470295
+tranpoints = 694077
+accept = 487248
+rejected = 206829
+matrix size = 13
+fillins = 2
+solver = Normal
+Matrix Compiler1: 722 bytes object code size  0.1/0.1/[0.1]
+Matrix Compiler2: off  [0.1]/0.1/0.1
+
