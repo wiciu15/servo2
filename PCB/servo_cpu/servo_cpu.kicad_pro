@@ -338,6 +338,14 @@
     [
       "2013f1d6-983e-42fb-a0f4-e9509e000f27",
       "EEPROM"
+    ],
+    [
+      "bf198303-dc2c-4043-95ac-f79273257e19",
+      "Encoder"
+    ],
+    [
+      "63791adc-fe14-4e15-9511-d81ede38744c",
+      "Connectivity"
     ]
   ],
   "text_variables": {}

@@ -91,6 +91,8 @@ void Error_Handler(void);
 #define I_V_GPIO_Port GPIOA
 #define SOFTSTART_Pin GPIO_PIN_4
 #define SOFTSTART_GPIO_Port GPIOC
+#define ENC_SHORT_Pin GPIO_PIN_5
+#define ENC_SHORT_GPIO_Port GPIOC
 #define PWMV_N_Pin GPIO_PIN_0
 #define PWMV_N_GPIO_Port GPIOB
 #define PWMW_N_Pin GPIO_PIN_1
@@ -129,6 +131,8 @@ void Error_Handler(void);
 #define ENC_B_GPIO_Port GPIOC
 #define ENC_Z_Pin GPIO_PIN_8
 #define ENC_Z_GPIO_Port GPIOC
+#define ENC_ENABLE_Pin GPIO_PIN_9
+#define ENC_ENABLE_GPIO_Port GPIOC
 #define ENCODER_DE_Pin GPIO_PIN_8
 #define ENCODER_DE_GPIO_Port GPIOA
 #define ENCODER_TX_Pin GPIO_PIN_9
@@ -157,6 +161,8 @@ void Error_Handler(void);
 #define EEPROM_SDA_GPIO_Port GPIOB
 #define EEPROM_SCL_Pin GPIO_PIN_8
 #define EEPROM_SCL_GPIO_Port GPIOB
+#define MODBUS_DE_Pin GPIO_PIN_9
+#define MODBUS_DE_GPIO_Port GPIOB
 #define DIN1_Pin GPIO_PIN_0
 #define DIN1_GPIO_Port GPIOE
 #define DIN2_Pin GPIO_PIN_1
