@@ -1,0 +1,13 @@
+Output: NC Drill Files
+Type  : NC Drill
+From  : Project [servo_pwr.PrjPcb]
+   Generated File[servo_pwr-Plated.TXT]
+   Generated File[servo_pwr-NonPlated.TXT]
+   Generated File[servo_pwr.LDP]
+   Generated File[servo_pwr.DRR]
+
+
+Files Generated   : 4
+Documents Printed : 0
+
+Finished Output Generation At 08:53:40 On 23.02.2023

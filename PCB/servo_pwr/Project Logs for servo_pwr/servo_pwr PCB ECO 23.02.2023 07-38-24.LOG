@@ -1,0 +1,6 @@
+Removed Pin From Net: NetName=B- Pin=J1-2
+Added Component: Designator=J10(Jumper)
+Added Pin To Net: NetName=NetJ1_2 Pin=J1-2
+Added Pin To Net: NetName=NetJ1_2 Pin=J10-2
+Added Net: Name=NetJ1_2
+Added Member To Class: ClassName=servo_pwr Member=Component J10 jumper

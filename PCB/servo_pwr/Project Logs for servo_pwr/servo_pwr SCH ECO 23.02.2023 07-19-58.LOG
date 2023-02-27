@@ -1,0 +1,29 @@
+Change Component Footprint: Designator=C1 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C3 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C4 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C5 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C6 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C7 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C8 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C11 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C12 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C13 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C16 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C17 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C18 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C20 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C21 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C22 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C23 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C27 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C28 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C29 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C30 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C32 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C33 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C34 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=C36 Old Footprint=CAP 0805_2012 New Footprint=0805 wide
+Change Component Footprint: Designator=R23 Old Footprint=resistor 5w vertical New Footprint=prmaawjw470b00
+Change Component Footprint: Designator=R24 Old Footprint=resistor 5w vertical New Footprint=prmaawjw470b00
+Change Component Comment: Designator=TP10 Old Comment=G New Comment=Gnd
+Change Component Comment: Designator=J6 Old Comment=JST 2pin New Comment=FAN

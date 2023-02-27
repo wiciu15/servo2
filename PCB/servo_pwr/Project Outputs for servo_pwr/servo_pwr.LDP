@@ -1,0 +1,3 @@
+Layer Pairs Export File for PCB: C:\Users\Wiktor\Documents\servo2pcb\PCB\servo_pwr\servo_pwr.PcbDoc
+LayersSetName=Top_Bot_Plated_Thru_Holes|DrillFile=servo_pwr-plated.txt|DrillLayers=gtl,gbl
+LayersSetName=Top_Bot_NonPlated_Thru_Holes|DrillFile=servo_pwr-nonplated.txt|DrillLayers=gtl,gbl
