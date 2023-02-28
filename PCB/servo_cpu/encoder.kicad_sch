@@ -728,66 +728,6 @@
         )
       )
     )
-    (symbol "power:Earth" (power) (pin_names (offset 0)) (in_bom yes) (on_board yes)
-      (property "Reference" "#PWR" (at 0 -6.35 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "Value" "Earth" (at 0 -3.81 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "Footprint" "" (at 0 0 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "Datasheet" "~" (at 0 0 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "ki_keywords" "global ground gnd" (at 0 0 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "ki_description" "Power symbol creates a global label with name \"Earth\"" (at 0 0 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (symbol "Earth_0_1"
-        (polyline
-          (pts
-            (xy -0.635 -1.905)
-            (xy 0.635 -1.905)
-          )
-          (stroke (width 0) (type default))
-          (fill (type none))
-        )
-        (polyline
-          (pts
-            (xy -0.127 -2.54)
-            (xy 0.127 -2.54)
-          )
-          (stroke (width 0) (type default))
-          (fill (type none))
-        )
-        (polyline
-          (pts
-            (xy 0 -1.27)
-            (xy 0 0)
-          )
-          (stroke (width 0) (type default))
-          (fill (type none))
-        )
-        (polyline
-          (pts
-            (xy 1.27 -1.27)
-            (xy -1.27 -1.27)
-          )
-          (stroke (width 0) (type default))
-          (fill (type none))
-        )
-      )
-      (symbol "Earth_1_1"
-        (pin power_in line (at 0 0 270) (length 0) hide
-          (name "Earth" (effects (font (size 1.27 1.27))))
-          (number "1" (effects (font (size 1.27 1.27))))
-        )
-      )
-    )
     (symbol "power:GND" (power) (pin_names (offset 0)) (in_bom yes) (on_board yes)
       (property "Reference" "#PWR" (at 0 -6.35 0)
         (effects (font (size 1.27 1.27)) hide)
@@ -2028,31 +1968,6 @@
     )
   )
 
-  (symbol (lib_id "power:Earth") (at 241.3 30.48 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
-    (uuid 713bd3d1-464f-4e33-b7a9-4c3d7d116145)
-    (property "Reference" "#PWR068" (at 241.3 36.83 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Value" "Earth" (at 241.3 34.29 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Footprint" "" (at 241.3 30.48 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Datasheet" "~" (at 241.3 30.48 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (pin "1" (uuid cd383e49-63cc-4ed1-8937-7cef9e3d4f43))
-    (instances
-      (project "servo_cpu"
-        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/bf198303-dc2c-4043-95ac-f79273257e19"
-          (reference "#PWR068") (unit 1)
-        )
-      )
-    )
-  )
-
   (symbol (lib_id "power:+5VL") (at 227.33 149.86 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
     (uuid 745d4793-f757-4718-9a2e-1dcc1def76ce)
@@ -2180,6 +2095,40 @@
     )
   )
 
+  (symbol (lib_id "power:GND") (at 242.57 125.73 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid 992764fb-1a15-48d0-8433-6dd7f34ffe59)
+    (property "Reference" "#PWR03" (at 242.57 132.08 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "GND" (at 240.03 128.27 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "" (at 242.57 125.73 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "" (at 242.57 125.73 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid 422af048-9062-49c7-b57f-68fd227cbc59))
+    (instances
+      (project "servo_cpu"
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/efadaaf3-3aa9-4d56-8b34-2b9a8a5957ea"
+          (reference "#PWR03") (unit 1)
+        )
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13"
+          (reference "#PWR022") (unit 1)
+        )
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/731cc340-9654-433e-bcf1-701f3d0fb633"
+          (reference "#PWR043") (unit 1)
+        )
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/bf198303-dc2c-4043-95ac-f79273257e19"
+          (reference "#PWR060") (unit 1)
+        )
+      )
+    )
+  )
+
   (symbol (lib_id "power:GND") (at 175.26 71.12 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 9a5c0f11-a37d-4913-b5ca-311fded14d7a)
@@ -2209,6 +2158,40 @@
         )
         (path "/db89e46c-646b-4fdd-b861-e9de706ced13/bf198303-dc2c-4043-95ac-f79273257e19"
           (reference "#PWR055") (unit 1)
+        )
+      )
+    )
+  )
+
+  (symbol (lib_id "power:GND") (at 241.3 30.48 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid a853c80c-0fa4-4f1f-a9de-a63a41c802b1)
+    (property "Reference" "#PWR03" (at 241.3 36.83 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "GND" (at 238.76 33.02 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "" (at 241.3 30.48 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "" (at 241.3 30.48 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid b6d1dc0a-2eeb-4dde-acf4-7bb70998349f))
+    (instances
+      (project "servo_cpu"
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/efadaaf3-3aa9-4d56-8b34-2b9a8a5957ea"
+          (reference "#PWR03") (unit 1)
+        )
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13"
+          (reference "#PWR022") (unit 1)
+        )
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/731cc340-9654-433e-bcf1-701f3d0fb633"
+          (reference "#PWR043") (unit 1)
+        )
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/bf198303-dc2c-4043-95ac-f79273257e19"
+          (reference "#PWR090") (unit 1)
         )
       )
     )
@@ -2361,31 +2344,6 @@
       (project "servo_cpu"
         (path "/db89e46c-646b-4fdd-b861-e9de706ced13/bf198303-dc2c-4043-95ac-f79273257e19"
           (reference "R9") (unit 1)
-        )
-      )
-    )
-  )
-
-  (symbol (lib_id "power:Earth") (at 242.57 125.73 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
-    (uuid dd362e2c-c22a-4a75-bb26-64c0e84624d6)
-    (property "Reference" "#PWR060" (at 242.57 132.08 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Value" "Earth" (at 242.57 129.54 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Footprint" "" (at 242.57 125.73 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Datasheet" "~" (at 242.57 125.73 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (pin "1" (uuid 1fe6d817-b7ca-4a80-8275-40ddc6297240))
-    (instances
-      (project "servo_cpu"
-        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/bf198303-dc2c-4043-95ac-f79273257e19"
-          (reference "#PWR060") (unit 1)
         )
       )
     )

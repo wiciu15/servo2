@@ -770,66 +770,6 @@
         )
       )
     )
-    (symbol "power:Earth" (power) (pin_names (offset 0)) (in_bom yes) (on_board yes)
-      (property "Reference" "#PWR" (at 0 -6.35 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "Value" "Earth" (at 0 -3.81 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "Footprint" "" (at 0 0 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "Datasheet" "~" (at 0 0 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "ki_keywords" "global ground gnd" (at 0 0 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (property "ki_description" "Power symbol creates a global label with name \"Earth\"" (at 0 0 0)
-        (effects (font (size 1.27 1.27)) hide)
-      )
-      (symbol "Earth_0_1"
-        (polyline
-          (pts
-            (xy -0.635 -1.905)
-            (xy 0.635 -1.905)
-          )
-          (stroke (width 0) (type default))
-          (fill (type none))
-        )
-        (polyline
-          (pts
-            (xy -0.127 -2.54)
-            (xy 0.127 -2.54)
-          )
-          (stroke (width 0) (type default))
-          (fill (type none))
-        )
-        (polyline
-          (pts
-            (xy 0 -1.27)
-            (xy 0 0)
-          )
-          (stroke (width 0) (type default))
-          (fill (type none))
-        )
-        (polyline
-          (pts
-            (xy 1.27 -1.27)
-            (xy -1.27 -1.27)
-          )
-          (stroke (width 0) (type default))
-          (fill (type none))
-        )
-      )
-      (symbol "Earth_1_1"
-        (pin power_in line (at 0 0 270) (length 0) hide
-          (name "Earth" (effects (font (size 1.27 1.27))))
-          (number "1" (effects (font (size 1.27 1.27))))
-        )
-      )
-    )
     (symbol "power:GND" (power) (pin_names (offset 0)) (in_bom yes) (on_board yes)
       (property "Reference" "#PWR" (at 0 -6.35 0)
         (effects (font (size 1.27 1.27)) hide)
@@ -1204,6 +1144,34 @@
     )
   )
 
+  (symbol (lib_id "power:GND") (at 236.22 74.93 0) (unit 1)
+    (in_bom yes) (on_board yes) (dnp no)
+    (uuid 34116b04-586b-4b9b-bdcc-4684cab2e856)
+    (property "Reference" "#PWR03" (at 236.22 81.28 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Value" "GND" (at 240.03 78.74 0)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Footprint" "" (at 236.22 74.93 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (property "Datasheet" "" (at 236.22 74.93 0)
+      (effects (font (size 1.27 1.27)) hide)
+    )
+    (pin "1" (uuid d9f9e665-2a67-455c-9e43-f57becfa4ed5))
+    (instances
+      (project "servo_cpu"
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/efadaaf3-3aa9-4d56-8b34-2b9a8a5957ea"
+          (reference "#PWR03") (unit 1)
+        )
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/63791adc-fe14-4e15-9511-d81ede38744c"
+          (reference "#PWR080") (unit 1)
+        )
+      )
+    )
+  )
+
   (symbol (lib_id "power:GND") (at 34.29 64.77 0) (unit 1)
     (in_bom yes) (on_board yes) (dnp no)
     (uuid 3bc2ebf2-8a38-437c-b93b-ea6b8570a0f3)
@@ -1385,34 +1353,6 @@
       (project "servo_cpu"
         (path "/db89e46c-646b-4fdd-b861-e9de706ced13/63791adc-fe14-4e15-9511-d81ede38744c"
           (reference "J7") (unit 1)
-        )
-      )
-    )
-  )
-
-  (symbol (lib_id "power:Earth") (at 236.22 74.93 0) (unit 1)
-    (in_bom yes) (on_board yes) (dnp no) (fields_autoplaced)
-    (uuid a2d4bf55-46e6-4a61-921a-b980a538f8d2)
-    (property "Reference" "#PWR068" (at 236.22 81.28 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Value" "Earth" (at 236.22 78.74 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Footprint" "" (at 236.22 74.93 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (property "Datasheet" "~" (at 236.22 74.93 0)
-      (effects (font (size 1.27 1.27)) hide)
-    )
-    (pin "1" (uuid 857a1039-3d7b-40c8-b942-b76f337ab7c3))
-    (instances
-      (project "servo_cpu"
-        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/bf198303-dc2c-4043-95ac-f79273257e19"
-          (reference "#PWR068") (unit 1)
-        )
-        (path "/db89e46c-646b-4fdd-b861-e9de706ced13/63791adc-fe14-4e15-9511-d81ede38744c"
-          (reference "#PWR080") (unit 1)
         )
       )
     )

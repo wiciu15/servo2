@@ -4119,6 +4119,23 @@
     )
   )
 
+  (sheet (at 259.08 54.61) (size 21.59 11.43) (fields_autoplaced)
+    (stroke (width 0.1524) (type solid))
+    (fill (color 0 0 0 0.0000))
+    (uuid 17609bd0-f204-4130-8dba-143e550c397b)
+    (property "Sheetname" "input-output" (at 259.08 53.8984 0)
+      (effects (font (size 1.27 1.27)) (justify left bottom))
+    )
+    (property "Sheetfile" "input-output.kicad_sch" (at 259.08 66.6246 0)
+      (effects (font (size 1.27 1.27)) (justify left top))
+    )
+    (instances
+      (project "servo_cpu"
+        (path "/db89e46c-646b-4fdd-b861-e9de706ced13" (page "7"))
+      )
+    )
+  )
+
   (sheet (at 233.68 36.83) (size 21.59 11.43) (fields_autoplaced)
     (stroke (width 0.1524) (type solid))
     (fill (color 0 0 0 0.0000))
