@@ -4,6 +4,14 @@
 
   (paper "A4")
 
+  (title_block
+    (title "Memory")
+    (date "2023-03-06")
+    (rev "1")
+    (comment 1 "W. Burdecki 2023")
+    (comment 2 "github.com/wiciu15")
+  )
+
   (lib_symbols
     (symbol "Device:C_Small" (pin_numbers hide) (pin_names (offset 0.254) hide) (in_bom yes) (on_board yes)
       (property "Reference" "C" (at 0.254 1.778 0)
@@ -336,6 +344,10 @@
   (text "Address 80" (at 121.92 86.36 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 445a094e-74fb-44d7-a522-ff81baf58131)
+  )
+  (text "I2C EEPROM" (at 135.89 53.34 0)
+    (effects (font (size 3 3)) (justify left bottom))
+    (uuid 51293ca0-7d59-4cc2-adb2-4741c9f8ab98)
   )
 
   (global_label "EEPROM_SDA" (shape input) (at 182.88 83.82 0) (fields_autoplaced)

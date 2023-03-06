@@ -4,6 +4,14 @@
 
   (paper "A4")
 
+  (title_block
+    (title "Encoder interface")
+    (date "2023-03-06")
+    (rev "1")
+    (comment 1 "W. Burdecki 2023")
+    (comment 2 "github.com/wiciu15")
+  )
+
   (lib_symbols
     (symbol "Connector:8P8C_Shielded" (pin_names (offset 1.016)) (in_bom yes) (on_board yes)
       (property "Reference" "J" (at -5.08 13.97 0)
@@ -1163,6 +1171,19 @@
   (wire (pts (xy 144.78 110.49) (xy 144.78 109.22))
     (stroke (width 0) (type default))
     (uuid ff9869d2-9542-47e5-88fb-652366a6e6bc)
+  )
+
+  (text "Encoder power" (at 73.66 102.87 0)
+    (effects (font (size 3 3)) (justify left bottom))
+    (uuid b5b762da-08e3-47c4-a1e0-e989b09d836a)
+  )
+  (text "SSI encoder" (at 175.26 17.78 0)
+    (effects (font (size 3 3)) (justify left bottom))
+    (uuid f57fdab0-ad4d-434a-86a8-1edd76e337fc)
+  )
+  (text "ABZ encoder" (at 182.88 85.09 0)
+    (effects (font (size 3 3)) (justify left bottom))
+    (uuid fbc3d2e3-e02e-42e6-a839-2b6ac7044c41)
   )
 
   (global_label "ENCODER_DE" (shape input) (at 151.13 60.96 180) (fields_autoplaced)

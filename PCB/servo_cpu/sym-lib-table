@@ -2,4 +2,5 @@
   (version 7)
   (lib (name "OLED")(type "KiCad")(uri "${KIPRJMOD}/OLED.kicad_sym")(options "")(descr ""))
   (lib (name "am26ls32")(type "KiCad")(uri "${KIPRJMOD}/am26ls32.kicad_sym")(options "")(descr ""))
+  (lib (name "isp742ri")(type "KiCad")(uri "${KIPRJMOD}/isp742ri.kicad_sym")(options "")(descr ""))
 )

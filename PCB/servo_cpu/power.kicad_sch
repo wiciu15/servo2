@@ -4,6 +4,14 @@
 
   (paper "A4")
 
+  (title_block
+    (title "Power")
+    (date "2023-03-06")
+    (rev "1")
+    (comment 1 "W. Burdecki 2023")
+    (comment 2 "github.com/wiciu15")
+  )
+
   (lib_symbols
     (symbol "Connector:Screw_Terminal_01x02" (pin_names (offset 1.016) hide) (in_bom yes) (on_board yes)
       (property "Reference" "J" (at 0 2.54 0)
@@ -1106,6 +1114,10 @@
   (text "for 470u and 12uf \n-3dB @ 2kHz" (at 229.87 67.31 0)
     (effects (font (size 1.27 1.27)) (justify left bottom))
     (uuid 7f8eb4aa-9638-4787-bd5f-1529d0292ec5)
+  )
+  (text "Negative -5V generator" (at 127 127 0)
+    (effects (font (size 3 3)) (justify left bottom))
+    (uuid bb50b6cd-96b4-4f4f-af1d-d8674f901f18)
   )
   (text "5v -> 3.3V regulator" (at 231.14 21.59 0)
     (effects (font (size 3 3)) (justify left bottom))
