@@ -1716,7 +1716,6 @@
     )
   )
 
-
   (junction (at 24.13 64.77) (diameter 0) (color 0 0 0 0)
     (uuid 00686257-cbb5-4006-84c2-201ddf058103)
   )
@@ -1807,6 +1806,7 @@
 
   (no_connect (at 107.95 116.84) (uuid 0b96a393-acd5-45bb-a073-70232d698d00))
   (no_connect (at 107.95 157.48) (uuid 25d6b19b-42f3-4e35-97be-ed93f5c85c0b))
+  (no_connect (at 107.95 104.14) (uuid 280299a8-1f5b-4824-93a8-9d9fbdf02279))
   (no_connect (at 62.23 99.06) (uuid 2e3f1cf1-21e2-4234-8e68-d33dcdd71d98))
   (no_connect (at 62.23 91.44) (uuid 3c6aa0b9-3ea0-4066-91b7-f6c85362039d))
   (no_connect (at 107.95 119.38) (uuid 4fe403a8-2f79-4c48-b514-d273d673733f))
@@ -2262,13 +2262,6 @@
     (effects (font (size 1.27 1.27)) (justify left))
     (uuid 240bb92d-d9df-44cb-b966-208a3e9fb9e5)
     (property "Intersheetrefs" "${INTERSHEET_REFS}" (at 116.6615 139.7 0)
-      (effects (font (size 1.27 1.27)) (justify left) hide)
-    )
-  )
-  (global_label "MODBUS_DE" (shape input) (at 107.95 104.14 0) (fields_autoplaced)
-    (effects (font (size 1.27 1.27)) (justify left))
-    (uuid 2450584b-2056-461c-83e0-a0d30314fc5c)
-    (property "Intersheetrefs" "${INTERSHEET_REFS}" (at 122.1043 104.14 0)
       (effects (font (size 1.27 1.27)) (justify left) hide)
     )
   )
