@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "inverter.h"
+#include <math.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -73,7 +74,9 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
-
+float angle=0.0f;
+float voltage=3.0f;
+float speed=0.0158f;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -624,10 +627,10 @@ static void MX_TIM1_Init(void)
   htim1.Instance = TIM1;
   htim1.Init.Prescaler = 0;
   htim1.Init.CounterMode = TIM_COUNTERMODE_CENTERALIGNED1;
-  htim1.Init.Period = 5249;
+  htim1.Init.Period = 10499;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
   {
     Error_Handler();
@@ -651,7 +654,7 @@ static void MX_TIM1_Init(void)
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_ENABLE;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
   sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
   if (HAL_TIM_PWM_ConfigChannel(&htim1, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
@@ -672,9 +675,9 @@ static void MX_TIM1_Init(void)
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 90;
+  sBreakDeadTimeConfig.DeadTime = 0;
   sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
+  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_LOW;
   sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
   if (HAL_TIMEx_ConfigBreakDeadTime(&htim1, &sBreakDeadTimeConfig) != HAL_OK)
   {
@@ -1066,12 +1069,34 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	HAL_GPIO_TogglePin(ETH_CS_GPIO_Port, ETH_CS_Pin);
+	uint16_t avg_U_samples=0;
+	uint16_t avg_V_samples=0;
+	//calculate zero-current voltage of current transducers to bias further readings
+	if(inverter.zerocurrent_ADC_samples_U==0){
+		for(uint8_t i=0;i<10;i+=2){
+			avg_U_samples+=inverter.output_current_adc_buffer[i];
+			avg_V_samples+=inverter.output_current_adc_buffer[i+1];
+		}
+		inverter.zerocurrent_ADC_samples_U=avg_U_samples/5;
+		inverter.zerocurrent_ADC_samples_V=avg_V_samples/5;
+	}else{ //average 5 ADC readings and calculate phase currents
+		for(uint8_t i=0;i<10;i+=2){
+			avg_U_samples+=inverter.output_current_adc_buffer[i];
+			avg_V_samples+=inverter.output_current_adc_buffer[i+1];
+		}
+		//calculate phase current
+		inverter.I_U=((float)avg_U_samples/5.0f-inverter.zerocurrent_ADC_samples_U)/ADC_SAMPLES_PER_AMP;
+		inverter.I_V=((float)avg_V_samples/5.0f-inverter.zerocurrent_ADC_samples_V)/ADC_SAMPLES_PER_AMP;
+		inverter.I_W=-inverter.I_U-inverter.I_V;
+	}
+	//calculation takes 2us, aquisition of 5(10) samples takes 12,5us
+	HAL_GPIO_TogglePin(ETH_CS_GPIO_Port, ETH_CS_Pin);
 }
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
+ * @brief  Function implementing the defaultTask thread.
   * @param  argument: Not used
   * @retval None
   */
@@ -1082,23 +1107,24 @@ void StartDefaultTask(void *argument)
 	 HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin,0);
 	 HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
 	 inverter_setup();
-	 osDelay(10);
-	 uint16_t zerocurrent= inverter.output_current_adc_buffer[0];
+	 osDelay(20);
 	 inverter_enable();
-  /* Infinite loop */
-	 inverter.output_voltage_vector.voltage=5.0f;
-	 for(;;)
-  {
-		 inverter.I_U=(inverter.output_current_adc_buffer[0]-zerocurrent)/ADC_SAMPLES_PER_AMP;
-		 inverter.I_V=(inverter.output_current_adc_buffer[1]-zerocurrent)/ADC_SAMPLES_PER_AMP;
-		 inverter.I_W=-inverter.I_U-inverter.I_V;
+	 /* Infinite loop */
 
-	  //inverter.output_voltage_vector.angle+=0.0158f;
-	  if(inverter.output_voltage_vector.angle>6.28f){inverter.output_voltage_vector.angle=0.0f;}
-	  output_sine_pwm(inverter.output_voltage_vector);
-    osDelay(10);
-  }
-  /* USER CODE END 5 */
+	 for(;;)
+	 {
+		 if(HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin)==0){
+			 angle+=speed;
+		 }
+		 if(HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)==0){
+			 angle+=0.0079f;
+		 }
+		 inverter.output_voltage_vector.U_Alpha=sinf(angle)*voltage;
+		 inverter.output_voltage_vector.U_Beta=cosf(angle)*voltage;
+		 output_sine_pwm(inverter.output_voltage_vector);
+		 osDelay(10);
+	 }
+	 /* USER CODE END 5 */
 }
 
 /**
