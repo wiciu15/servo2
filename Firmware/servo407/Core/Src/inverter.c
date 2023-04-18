@@ -13,6 +13,7 @@
 
 extern TIM_HandleTypeDef htim1;
 extern ADC_HandleTypeDef hadc2;
+extern SPI_HandleTypeDef hspi2;
 
 inverter_t inverter={
 		.error=no_error,
@@ -23,25 +24,35 @@ inverter_t inverter={
 				.U_Alpha=0.0f,
 				.U_Beta=0.0f
 		},
-		.DCbus_voltage=20.0f,
+		.DCbus_voltage=66.6f,
+		.IGBT_temp=0.0f,
 		.zerocurrent_ADC_samples_U=0,
 		.zerocurrent_ADC_samples_V=0,
 		.output_current_adc_buffer={0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
+		.HOT_ADC={
+				.HOT_ADC_tx_buffer={0x60,0,0x70,0},
+				.DCVolt_sum=0,
+				.IGBTtemp_sum=0,
+				.measurement_loop_iteration=0
+		},
+		.DCbus_volts_for_sample=0.421f,
+		.igbt_overtemperature_limit=65.0f,
 		.I_U=10.0f,
 		.I_V=0.0f,
 		.I_W=0.0f,
 		.U_U=0.0f,
 		.U_V=0.0f,
-		.U_W=0.0f
+		.U_W=0.0f,
 };
-float U_sat=2.1f;
+float U_sat=2.0f;
 
 /**
   * @brief  Set up inverter for operation
   * @retval null
   */
 void inverter_setup(void){
-	HAL_ADC_Start_DMA(&hadc2, inverter.output_current_adc_buffer, 10);
+	HAL_ADC_Start_DMA(&hadc2, inverter.output_current_adc_buffer, 10);//start current reading
+	HOT_ADC_read(); //start igbt temp and dc link reading
 }
 /**
   * @brief  Enable PWM output of the inverter
@@ -88,6 +99,44 @@ void inverter_error_trip(inverter_error_t error){
 	inverter_disable();
 	inverter.state=trip;
 	inverter.error=error;
+}
+
+void HOT_ADC_read(){
+	HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, 0);
+	if(inverter.HOT_ADC.measurement_loop_iteration%2==0){
+	HAL_SPI_TransmitReceive_DMA(&hspi2, inverter.HOT_ADC.HOT_ADC_tx_buffer, inverter.HOT_ADC.HOT_ADC_rx_buffer, 2);
+	}else{
+		HAL_SPI_TransmitReceive_DMA(&hspi2, inverter.HOT_ADC.HOT_ADC_tx_buffer+2, inverter.HOT_ADC.HOT_ADC_rx_buffer, 2);
+	}
+}
+
+void HOT_ADC_RX_Cplt(){
+	HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, 1);
+	uint16_t ADC_reading=inverter.HOT_ADC.HOT_ADC_rx_buffer[1]+((inverter.HOT_ADC.HOT_ADC_rx_buffer[0]&0b00000111)<<8);
+	if(inverter.HOT_ADC.measurement_loop_iteration%2==0){
+		inverter.HOT_ADC.DCVolt_sum+=ADC_reading;
+	}else{
+		inverter.HOT_ADC.IGBTtemp_sum+=ADC_reading;
+	}
+	inverter.HOT_ADC.measurement_loop_iteration++;
+	if(inverter.HOT_ADC.measurement_loop_iteration>=8){
+		HOT_ADC_calculate_avg();
+	}else{
+		HOT_ADC_read();
+	}
+}
+
+void HOT_ADC_calculate_avg(){
+	inverter.DCbus_voltage=(inverter.HOT_ADC.DCVolt_sum/(inverter.HOT_ADC.measurement_loop_iteration/2))*inverter.DCbus_volts_for_sample;
+	float U_thermistor=((inverter.HOT_ADC.IGBTtemp_sum/(inverter.HOT_ADC.measurement_loop_iteration/2))/1024.0f)*5.0f;
+	float R_thermistor=22000*(1.0f/((5.0f/(U_thermistor))-1.0f));
+	inverter.IGBT_temp=(1.0f/((logf(R_thermistor/85000.0f)/(4092.0f))+(1.0f/298.15f)))-273.15f;
+	if(inverter.IGBT_temp>inverter.igbt_overtemperature_limit){
+		inverter_error_trip(inverter_overtemperature);
+	}
+	inverter.HOT_ADC.measurement_loop_iteration=0;
+	inverter.HOT_ADC.DCVolt_sum=0;
+	inverter.HOT_ADC.IGBTtemp_sum=0;
 }
 
 /**

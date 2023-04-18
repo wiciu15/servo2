@@ -55,6 +55,8 @@ I2C_HandleTypeDef hi2c1;
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
+DMA_HandleTypeDef hdma_spi2_tx;
+DMA_HandleTypeDef hdma_spi2_rx;
 
 TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
@@ -76,7 +78,7 @@ const osThreadAttr_t defaultTask_attributes = {
 /* USER CODE BEGIN PV */
 float angle=0.0f;
 float voltage=3.0f;
-float speed=0.0158f;
+float speed=0.00632f;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -191,7 +193,6 @@ int main(void)
 
   /* Start scheduler */
   osKernelStart();
-
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -551,7 +552,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_128;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -675,7 +676,7 @@ static void MX_TIM1_Init(void)
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 0;
+  sBreakDeadTimeConfig.DeadTime = 50;
   sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_LOW;
   sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
@@ -949,8 +950,15 @@ static void MX_DMA_Init(void)
 
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
+  /* DMA1_Stream4_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream4_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream4_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
@@ -968,6 +976,8 @@ static void MX_DMA_Init(void)
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
+/* USER CODE BEGIN MX_GPIO_Init_1 */
+/* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOE_CLK_ENABLE();
@@ -984,16 +994,16 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, SOFTSTART_Pin|ENC_ENABLE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, ADC_CS_Pin|OLED_CS_Pin|OLED_RESET_Pin|MODBUS_DE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, ADC_CS_Pin|OLED_CS_Pin|OLED_RESET_Pin|MODBUS_DE_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, LED_STATUS_Pin|LED_ERROR_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOD, LED_STATUS_Pin|LED_ERROR_Pin|ETH_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port, ENCODER_DE_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port, ENCODER_DE_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, ETH_RESET_Pin|ETH_CS_Pin|GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOD, ETH_RESET_Pin|GPIO_PIN_7, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : DIN3_Pin DIN4_Pin DIN5_Pin DIN1_Pin
                            DIN2_Pin */
@@ -1064,6 +1074,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(ETH_INT_GPIO_Port, &GPIO_InitStruct);
 
+/* USER CODE BEGIN MX_GPIO_Init_2 */
+/* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
@@ -1092,6 +1104,13 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	//calculation takes 2us, aquisition of 5(10) samples takes 12,5us
 	HAL_GPIO_TogglePin(ETH_CS_GPIO_Port, ETH_CS_Pin);
 }
+
+void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi){
+	if(hspi->Instance==SPI2){
+		HOT_ADC_RX_Cplt();
+	}
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -1113,18 +1132,22 @@ void StartDefaultTask(void *argument)
 
 	 for(;;)
 	 {
+		 osDelay(1);
 		 if(HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin)==0){
 			 angle+=speed;
 		 }
 		 if(HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)==0){
-			 angle+=0.0079f;
+			 angle+=0.00079f;
 		 }
 		 inverter.output_voltage_vector.U_Alpha=sinf(angle)*voltage;
 		 inverter.output_voltage_vector.U_Beta=cosf(angle)*voltage;
+
+		 HOT_ADC_read();
+
 		 output_sine_pwm(inverter.output_voltage_vector);
-		 osDelay(10);
+
 	 }
-	 /* USER CODE END 5 */
+  /* USER CODE END 5 */
 }
 
 /**

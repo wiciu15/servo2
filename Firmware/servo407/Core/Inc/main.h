@@ -151,6 +151,7 @@ void Error_Handler(void);
 #define DIN1_GPIO_Port GPIOE
 #define DIN2_Pin GPIO_PIN_1
 #define DIN2_GPIO_Port GPIOE
+
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
