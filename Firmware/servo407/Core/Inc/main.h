@@ -77,6 +77,7 @@ void Error_Handler(void);
 #define BRAKE_GPIO_Port GPIOA
 #define IGBT_FAULT_Pin GPIO_PIN_1
 #define IGBT_FAULT_GPIO_Port GPIOA
+#define IGBT_FAULT_EXTI_IRQn EXTI1_IRQn
 #define DAC1_Pin GPIO_PIN_4
 #define DAC1_GPIO_Port GPIOA
 #define DAC2_Pin GPIO_PIN_5

@@ -16,7 +16,7 @@
 #define _SQRT3 1.73205f
 
 //list of possible inverter errors that need to inhibit output and trip the inverter
-typedef enum {no_error,
+enum inverter_error_t {no_error,
 	undervoltage_condition,//condition that clears ittself after voltage comes back ok
 	undervoltage, //trip if supply was too low when running
 	overvoltage,
@@ -28,7 +28,7 @@ typedef enum {no_error,
 	encoder_error_mechanical,
 	internal_software,
 	external_comm
-}inverter_error_t;
+};
 typedef enum {stop,run,inhibit,trip}inverter_state_t;
 typedef enum {manual,u_f,open_loop_current,foc}control_mode_t;
 typedef struct _output_voltage_vector_t{
@@ -44,7 +44,7 @@ typedef struct _HOT_ADC_t{
 }HOT_ADC_t;
 
 typedef struct _inverter_t {
-inverter_error_t error;
+uint32_t error;
 inverter_state_t state;
 control_mode_t control_mode;
 uint16_t duty_cycle_limit;
@@ -57,6 +57,7 @@ uint16_t output_current_adc_buffer [10]; //buffer for ADC samples
 HOT_ADC_t HOT_ADC;
 float DCbus_volts_for_sample;
 float igbt_overtemperature_limit;
+float undervoltage_limit;
 float I_U;
 float I_V;
 float I_W;
@@ -70,7 +71,7 @@ extern inverter_t inverter;
 void inverter_setup(void);
 void inverter_enable(void);
 void inverter_disable(void);
-void inverter_error_trip(uint8_t error);
+void inverter_error_trip(uint8_t error_number);
 void HOT_ADC_read(void);
 void HOT_ADC_RX_Cplt(void);
 void HOT_ADC_calculate_avg(void);

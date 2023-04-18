@@ -676,7 +676,7 @@ static void MX_TIM1_Init(void)
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 50;
+  sBreakDeadTimeConfig.DeadTime = 90;
   sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_LOW;
   sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
@@ -1074,6 +1074,10 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(ETH_INT_GPIO_Port, &GPIO_InitStruct);
 
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI1_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI1_IRQn);
+
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
@@ -1127,17 +1131,28 @@ void StartDefaultTask(void *argument)
 	 HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
 	 inverter_setup();
 	 osDelay(20);
-	 inverter_enable();
 	 /* Infinite loop */
 
 	 for(;;)
 	 {
 		 osDelay(1);
+		 if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&&(inverter.error==undervoltage_condition||inverter.error==no_error)){
+			 inverter.error=0;
+			 if(inverter.state==inhibit){inverter.state=stop;}
+			 HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);
+		 }
+		 if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){	inverter_error_trip(undervoltage); HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);} //@TODO:disable sofstart after a timer
+		 if(inverter.DCbus_voltage<inverter.undervoltage_limit && (inverter.state==stop || inverter.state==trip)){inverter_error_trip(undervoltage_condition);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);}
+
 		 if(HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin)==0){
+			 if(inverter.state==stop){inverter_enable();}
 			 angle+=speed;
 		 }
-		 if(HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)==0){
+		 else if(HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)==0){
+			 if(inverter.state==stop){inverter_enable();}
 			 angle+=0.00079f;
+		 }else{
+			 if(inverter.state==run){inverter_disable();}
 		 }
 		 inverter.output_voltage_vector.U_Alpha=sinf(angle)*voltage;
 		 inverter.output_voltage_vector.U_Beta=cosf(angle)*voltage;
