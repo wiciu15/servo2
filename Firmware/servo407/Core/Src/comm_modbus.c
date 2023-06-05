@@ -38,11 +38,11 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 2: response = inverter.error;break;
 	case 3: response = inverter.state;break;
 	case 5: response = inverter.control_mode;break;
-	//case 6:{if(control_mode==manual || control_mode==open_loop_current){response = (int16_t)(speed_setpoint_deg_s/6.0f);}if(control_mode==foc){response = speed_setpoint_rpm;} break;}
-	//case 7:{if(control_mode==manual){response = (duty_cycle/(float)duty_cycle_limit)*100.0f;}if(control_mode==open_loop_current || control_mode == foc){response = (int16_t)((torque_setpoint/parameter_set.motor_nominal_current)*1000.0f);}break;}
+	case 6:{if(inverter.control_mode==manual || inverter.control_mode==open_loop_current){response = (int16_t)(inverter.stator_field_speed*_2_PI*MOTOR_CTRL_LOOP_FREQ);}if(inverter.control_mode==foc){/*response = speed_setpoint_rpm;*/} break;}
+	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode == foc){/*response = (int16_t)((torque_setpoint/parameter_set.motor_nominal_current)*1000.0f);*/}break;}
 	//case 8:{if(control_mode==foc){response = (int16_t)((id_setpoint/parameter_set.motor_nominal_current)*1000.0f);}break;}
-	//case 10: response = (int16_t)(I_out *100.0f);break;
-	//case 11: response = (uint16_t)(actual_electric_angle);break;
+	case 10: response = (int16_t)(inverter.I_RMS *100.0f);break;
+	case 11: response = (uint16_t)(inverter.stator_electric_angle*(180.0f/_PI)*10.0f);break;
 	//case 12: response = (int16_t)(actual_torque_angle);break;
 	//case 13: response = (int16_t)(filtered_speed);break;
 	case 14: response = (uint16_t)(inverter.DCbus_voltage*10.0f);break;
@@ -101,26 +101,25 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	break;}
 
 	case 5: //operation mode register
-	{if(value<=2){inverter.control_mode=value;}
+	{if(value<=3){inverter.control_mode=value;}
 	break;
 	}
-/*
+
 	case 6: //speed setpoint in rpm
 	{int16_t received_speed=value;
-	if(control_mode==manual || control_mode==open_loop_current){
-		if((received_speed)<=5000 && (received_speed)>=(-5000) ){speed_setpoint_deg_s = (float)received_speed*6.0f;}
+	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current){
+		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.stator_field_speed = (float)received_speed*(_2_PI/MOTOR_CTRL_LOOP_FREQ);}
 	}
-	if(control_mode==foc){
-		if((received_speed)<=5000 && (received_speed)>=(-5000) ){speed_setpoint_rpm = received_speed;}
-	}
+	//if(control_mode==foc){
+	//	if((received_speed)<=5000 && (received_speed)>=(-5000) ){speed_setpoint_rpm = received_speed;}
+	//}
 	break;}
 
 	case 7: //set output voltage in manual/torque in foc
-	{if(control_mode==manual){
-		uint16_t received_duty_cycle_percent=value;
-		if(value<=1000 && value>=0){duty_cycle = ((float)received_duty_cycle_percent/1000.0f)*(float)duty_cycle_limit;}
+	{if(inverter.control_mode==manual){
+		if(value<=4000 && value>=0){inverter.output_voltage = ((float)value/10.0f);}
 		}
-	if(control_mode==open_loop_current){
+	/*if(control_mode==open_loop_current){
 		int16_t received_torque_setpoint = (int16_t)value;
 		if(received_torque_setpoint>=0 && received_torque_setpoint<=1000){
 			if(speed_setpoint_rpm==0){
@@ -135,9 +134,10 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 				torque_setpoint=(received_torque_setpoint/1000.0f)*parameter_set.motor_nominal_current;
 			}
 		}
-	}
+	}*/
 	break;
 	}
+	/*
 	case 8:
 	{
 		if(control_mode==foc){

@@ -64,6 +64,7 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim5;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -76,9 +77,6 @@ const osThreadAttr_t defaultTask_attributes = {
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* USER CODE BEGIN PV */
-float angle=0.0f;
-float voltage=3.0f;
-float speed=0.00632f;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -99,6 +97,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM5_Init(void);
 void StartDefaultTask(void *argument);
 
 /* USER CODE BEGIN PFP */
@@ -153,6 +152,7 @@ int main(void)
   MX_I2C1_Init();
   MX_SPI3_Init();
   MX_TIM2_Init();
+  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -840,6 +840,51 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief TIM5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 0;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 10499;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim5.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -1047,7 +1092,6 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
-	HAL_GPIO_TogglePin(ETH_CS_GPIO_Port, ETH_CS_Pin);
 	uint16_t avg_U_samples=0;
 	uint16_t avg_V_samples=0;
 	//calculate zero-current voltage of current transducers to bias further readings
@@ -1069,7 +1113,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		inverter.I_W=-inverter.I_U-inverter.I_V;
 	}
 	//calculation takes 2us, aquisition of 5(10) samples takes 12,5us
-	HAL_GPIO_TogglePin(ETH_CS_GPIO_Port, ETH_CS_Pin);
 }
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi){
@@ -1102,30 +1145,14 @@ void StartDefaultTask(void *argument)
 	 for(;;)
 	 {
 		 osDelay(1);
-		 if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&&(inverter.error==undervoltage_condition||inverter.error==no_error)){
-			 inverter.error=0;
-			 if(inverter.state==inhibit){inverter.state=stop;}
-			 HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);
-		 }
-		 if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){	inverter_error_trip(undervoltage); HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);} //@TODO:disable sofstart after a timer
-		 if(inverter.DCbus_voltage<inverter.undervoltage_limit && (inverter.state==stop || inverter.state==trip)){inverter_error_trip(undervoltage_condition);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);}
+		 DCBus_voltage_check();
 
-		 if(HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin)==0){
+		 /*if(HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin)==0){
 			 if(inverter.state==stop){inverter_enable();}
-			 angle+=speed;
-		 }
-		 else if(HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)==0){
-			 if(inverter.state==stop){inverter_enable();}
-			 angle+=0.00079f;
 		 }else{
 			 if(inverter.state==run){inverter_disable();}
-		 }
-		 inverter.output_voltage_vector.U_Alpha=sinf(angle)*voltage;
-		 inverter.output_voltage_vector.U_Beta=cosf(angle)*voltage;
+		 }*/
 
-		 HOT_ADC_read();
-
-		 output_sine_pwm(inverter.output_voltage_vector);
 		 process_modbus_command();
 
 	 }

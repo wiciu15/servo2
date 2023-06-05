@@ -10,10 +10,43 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include "pid.h"
 
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim5;
 extern ADC_HandleTypeDef hadc2;
 extern SPI_HandleTypeDef hspi2;
+
+//DEFAULT PARAMETER SET FROM DRIVE ROM, values would reset between restarts, @TODO: read and write parameter set from flash on boot
+parameter_set_t parameter_set={
+		.motor_max_current=3.0f, //14.3 according to datasheet
+		.motor_nominal_current=2.5f,
+		.motor_pole_pairs=5, //4 for abb motor 5 for bch and mitsubishi hf-kn43
+		.motor_max_voltage=110.0f,
+		.motor_max_torque=7.17f,
+		.motor_nominal_torque=2.39f,
+		.motor_nominal_speed=3000,
+		.motor_base_frequency=200*(_2_PI/MOTOR_CTRL_LOOP_FREQ),
+		.motor_max_speed=5000,
+		.motor_rs=0.25f,
+		.motor_ls=0.002f, //winding inductance in H
+		.motor_K=0.18f,  //electical constant in V/(rad/s*pole_pairs) 1000RPM=104.719rad/s
+		.motor_feedback_type=delta_encoder,
+		.encoder_electric_angle_correction=-60, //-90 for abb BSM, 0 for bch, 0 for abb esm18, 60 for hf-kn43
+		.encoder_resolution=5000,
+
+		.current_filter_ts=0.001f,
+		.torque_current_ctrl_proportional_gain=3.9f, //gain in V/A
+		.torque_current_ctrl_integral_gain=1000.0f,
+		.field_current_ctrl_proportional_gain=6.1f,
+		.field_current_ctrl_integral_gain=1000.0f,
+
+		.speed_filter_ts=0.001f,
+		.speed_controller_proportional_gain=0.023f,
+		.speed_controller_integral_gain=0.1f,
+		.speed_controller_output_torque_limit=1.0f, //limit torque, Iq is the output so the calcualtion is needed to convert N/m to A
+		.speed_controller_integral_limit=1.0f //1.0 is for example, valid iq current gets copied from motor nominal current
+};
 
 inverter_t inverter={
 		.error=no_error,
@@ -24,6 +57,9 @@ inverter_t inverter={
 				.U_Alpha=0.0f,
 				.U_Beta=0.0f
 		},
+		.stator_electric_angle=0.0f,
+		.output_voltage=3.0f,
+		.stator_field_speed=0.0f,
 		.DCbus_voltage=66.6f,
 		.IGBT_temp=0.0f,
 		.zerocurrent_ADC_samples_U=0,
@@ -38,12 +74,42 @@ inverter_t inverter={
 		.DCbus_volts_for_sample=0.421f,
 		.igbt_overtemperature_limit=65.0f,
 		.undervoltage_limit=10,
-		.I_U=10.0f,
+		.I_U=0.0f,
 		.I_V=0.0f,
 		.I_W=0.0f,
+		.RMS_current={
+				.rms_count=0,
+				.I_U_square_sum=0.0f,
+				.I_V_square_sum=0.0f,
+				.I_W_square_sum=0.0f
+		},
+		.I_RMS=0.0f,
 		.U_U=0.0f,
 		.U_V=0.0f,
 		.U_W=0.0f,
+
+		.id_current_controller_data = {
+				0.0f,
+				0.0f,
+				0.0f,0.0f,
+				1.0f/MOTOR_CTRL_LOOP_FREQ,
+				0.0f,0.0f,0.0f,0.0f
+		},
+		.iq_current_controller_data = {
+				0.0f,
+				0.0f,
+				0.0f,0.0f,
+				1.0f/MOTOR_CTRL_LOOP_FREQ,
+				0.0f,0.0f,0.0f,0.0f
+		},
+		.speed_controller_data = {
+				0.0f,
+				0.0f,
+				0.0f,
+				0.0f,
+				0.0016f,
+				0.0f,0.0f,0.0f,0.0f
+		}
 };
 float U_sat=2.0f;
 
@@ -53,6 +119,7 @@ float U_sat=2.0f;
   */
 void inverter_setup(void){
 	HAL_ADC_Start_DMA(&hadc2, inverter.output_current_adc_buffer, 10);//start current reading
+	HAL_TIM_Base_Start_IT(&htim5);
 	HOT_ADC_read(); //start igbt temp and dc link reading
 }
 /**
@@ -268,5 +335,77 @@ void output_svpwm(output_voltage_vector_t voltage_vector){
 	      TIM1->CCR1=(uint16_t)inverter.U_U;
 	      TIM1->CCR2=(uint16_t)inverter.U_V;
 	      TIM1->CCR3=(uint16_t)inverter.U_W;
+}
+
+
+/**
+  * @brief  This function when ran in loop will integrate 3 phase currents to get average RMS value
+  * @param  null
+  * @retval null
+  */
+void RMS_current_calculation_loop(void){
+	inverter.RMS_current.rms_count++;
+	//integrate phase currents
+	inverter.RMS_current.I_U_square_sum+=(inverter.I_U*inverter.I_U);
+	inverter.RMS_current.I_V_square_sum+=(inverter.I_V*inverter.I_V);
+	inverter.RMS_current.I_W_square_sum+=(inverter.I_W*inverter.I_W);
+//calculate RMS values and average of 3 phases
+	if(inverter.RMS_current.rms_count>CURRENT_RMS_SAMPLING_COUNT){
+		float I_U_RMS=sqrtf(inverter.RMS_current.I_U_square_sum/(float)inverter.RMS_current.rms_count);
+		float I_V_RMS=sqrtf(inverter.RMS_current.I_V_square_sum/(float)inverter.RMS_current.rms_count);
+		float I_W_RMS=sqrtf(inverter.RMS_current.I_W_square_sum/(float)inverter.RMS_current.rms_count);
+		inverter.I_RMS=(I_U_RMS+I_V_RMS+I_W_RMS)/3.0f;
+		inverter.RMS_current.rms_count=0;inverter.RMS_current.I_U_square_sum=0.0f;inverter.RMS_current.I_V_square_sum=0.0f;inverter.RMS_current.I_W_square_sum=0.0f;}
+}
+void motor_control_loop_slow(void){
+
+}
+
+/**
+  * @brief  This function inhibits or trips the inverter in case of undervoltage, also controls softstart relay
+  * @param  null
+  * @retval null
+  */
+void DCBus_voltage_check(void){
+	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&&(inverter.error==undervoltage_condition||inverter.error==no_error)){
+		inverter.error=0;
+		if(inverter.state==inhibit){inverter.state=stop;}
+		HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);
+	}
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){	inverter_error_trip(undervoltage); HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);} //@TODO:disable sofstart after a timer
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (inverter.state==stop || inverter.state==trip)){inverter_error_trip(undervoltage_condition);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);}
+
+}
+
+/**
+ * @brief  Main motor control loop
+ * @param  null
+ * @retval null
+ */
+void motor_control_loop(void){
+	HAL_GPIO_TogglePin(ETH_CS_GPIO_Port, ETH_CS_Pin);
+	//run RMS calculation loop
+	RMS_current_calculation_loop();
+
+	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current ){
+		//increment stator electric angle based on set frequency
+		if(inverter.state==run){inverter.stator_electric_angle+=inverter.stator_field_speed;}
+		if(inverter.stator_electric_angle>_2_PI){inverter.stator_electric_angle-=_2_PI;}
+		if(inverter.stator_electric_angle<0.0f){inverter.stator_electric_angle+=_2_PI;}
+		//if in u/f mode calculate voltage for given frequency
+		if(inverter.control_mode==u_f){
+			inverter.output_voltage=(inverter.stator_field_speed/parameter_set.motor_base_frequency)*parameter_set.motor_max_voltage;
+		}
+		//calculate voltage vectors
+		inverter.output_voltage_vector.U_Alpha=sinf(inverter.stator_electric_angle)*inverter.output_voltage;
+		inverter.output_voltage_vector.U_Beta=cosf(inverter.stator_electric_angle)*inverter.output_voltage;
+	}
+
+	//start SPI transaction with ADC on primary side
+	HOT_ADC_read();
+
+	//send calculated vector to igbt PWM
+	output_sine_pwm(inverter.output_voltage_vector);
+	HAL_GPIO_TogglePin(ETH_CS_GPIO_Port, ETH_CS_Pin);
 }
 

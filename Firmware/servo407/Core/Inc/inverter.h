@@ -11,12 +11,18 @@
 #define INVERTER_OVERCURRENT_TRIP_LEVEL 10.0f  //overcurrrent trip setting level in Amperes
 #define ADC_SAMPLES_PER_AMP 65.0f //number of ADC samples read for 1A of phase current
 #define CURRENT_RMS_SAMPLING_COUNT 500 //(2*pwm frequency)/this define=rms current sampling frequency, for 500 = 32 calculations per second
+#define MOTOR_CTRL_LOOP_FREQ 8000.0f
 
+#define _2_PI 6.283185f
+#define _PI 3.141592f
 #define _PI_3 1.0472f
 #define _SQRT3 1.73205f
 
+#include "pid.h"
+#include "parameter_set.h"
+
 //list of possible inverter errors that need to inhibit output and trip the inverter
-enum inverter_error_t {no_error,
+typedef enum {no_error,
 	undervoltage_condition,//condition that clears ittself after voltage comes back ok
 	undervoltage, //trip if supply was too low when running
 	overvoltage,
@@ -28,7 +34,7 @@ enum inverter_error_t {no_error,
 	encoder_error_mechanical,
 	internal_software,
 	external_comm
-};
+}inverter_error_t;
 typedef enum {stop,run,inhibit,trip}inverter_state_t;
 typedef enum {manual,u_f,open_loop_current,foc}control_mode_t;
 typedef struct _output_voltage_vector_t{
@@ -42,13 +48,22 @@ typedef struct _HOT_ADC_t{
 	uint32_t IGBTtemp_sum;
 	uint8_t measurement_loop_iteration; //number of measurement loop iterations,divide by 2 to get number of measurements
 }HOT_ADC_t;
+typedef struct _RMS_current_t{
+	uint16_t rms_count;
+	float I_U_square_sum;
+	float I_V_square_sum;
+	float I_W_square_sum;
+}RMS_current_t;
 
 typedef struct _inverter_t {
-uint32_t error;
+inverter_error_t error;
 inverter_state_t state;
 control_mode_t control_mode;
 uint16_t duty_cycle_limit;
 output_voltage_vector_t output_voltage_vector;
+float stator_electric_angle;
+float output_voltage;
+float stator_field_speed;
 float DCbus_voltage;
 float IGBT_temp;
 uint16_t zerocurrent_ADC_samples_U; //number of ADC samples when output is off and current is 0
@@ -61,12 +76,19 @@ float undervoltage_limit;
 float I_U;
 float I_V;
 float I_W;
+RMS_current_t RMS_current;
+float I_RMS;
 float U_U;
 float U_V;
 float U_W;
+
+PID_t id_current_controller_data;
+PID_t iq_current_controller_data;
+PID_t speed_controller_data;
 }inverter_t;
 
 extern inverter_t inverter;
+extern parameter_set_t parameter_set;
 
 void inverter_setup(void);
 void inverter_enable(void);
@@ -77,5 +99,9 @@ void HOT_ADC_RX_Cplt(void);
 void HOT_ADC_calculate_avg(void);
 void output_sine_pwm(output_voltage_vector_t voltage_vector);
 void output_svpwm(output_voltage_vector_t voltage_vector);
+void DCBus_voltage_check(void);
+void RMS_current_calculation_loop(void);
+void motor_control_loop(void);
+void motor_control_loop_slow(void);
 
 #endif /* INC_INVERTER_H_ */
