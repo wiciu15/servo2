@@ -76,12 +76,23 @@ float undervoltage_limit;
 float I_U;
 float I_V;
 float I_W;
+float I_alpha;
+float I_beta;
+float I_d; //field producing current
+float I_q; //torque producing current
+float I_d_filtered;
+float I_q_filtered;
+float I_d_last; //values from previous control loop iteration
+float I_q_last;
 RMS_current_t RMS_current;
 float I_RMS;
+float U_q;
+float U_d;
 float U_U;
 float U_V;
 float U_W;
-
+float torque_current_setpoint;
+float field_current_setpoint;
 PID_t id_current_controller_data;
 PID_t iq_current_controller_data;
 PID_t speed_controller_data;
@@ -97,6 +108,11 @@ void inverter_error_trip(uint8_t error_number);
 void HOT_ADC_read(void);
 void HOT_ADC_RX_Cplt(void);
 void HOT_ADC_calculate_avg(void);
+void clarke_transform(float I_U,float I_V,float * I_alpha,float * I_beta);
+void park_transform(float I_alpha,float I_beta,float angle,float * I_d,float * I_q);
+void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float * U_beta);
+float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_value);
+
 void output_sine_pwm(output_voltage_vector_t voltage_vector);
 void output_svpwm(output_voltage_vector_t voltage_vector);
 void DCBus_voltage_check(void);

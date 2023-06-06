@@ -39,17 +39,17 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 3: response = inverter.state;break;
 	case 5: response = inverter.control_mode;break;
 	case 6:{if(inverter.control_mode==manual || inverter.control_mode==open_loop_current){response = (int16_t)(inverter.stator_field_speed*_2_PI*MOTOR_CTRL_LOOP_FREQ);}if(inverter.control_mode==foc){/*response = speed_setpoint_rpm;*/} break;}
-	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode == foc){/*response = (int16_t)((torque_setpoint/parameter_set.motor_nominal_current)*1000.0f);*/}break;}
-	//case 8:{if(control_mode==foc){response = (int16_t)((id_setpoint/parameter_set.motor_nominal_current)*1000.0f);}break;}
+	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode == foc){response = (int16_t)((inverter.torque_current_setpoint/parameter_set.motor_nominal_current)*1000.0f);}break;}
+	case 8:{if(inverter.control_mode==open_loop_current || inverter.control_mode==foc){response = (int16_t)((inverter.field_current_setpoint/parameter_set.motor_nominal_current)*1000.0f);}break;}
 	case 10: response = (int16_t)(inverter.I_RMS *100.0f);break;
-	case 11: response = (uint16_t)(inverter.stator_electric_angle*(180.0f/_PI)*10.0f);break;
+	case 11: response = (uint16_t)(inverter.stator_electric_angle*(180.0f/_PI)*100.0f);break;
 	//case 12: response = (int16_t)(actual_torque_angle);break;
 	//case 13: response = (int16_t)(filtered_speed);break;
 	case 14: response = (uint16_t)(inverter.DCbus_voltage*10.0f);break;
-	//case 15: response = (int16_t)(I_d_filtered*100.0f);break;
-	//case 16: response = (int16_t)(I_q_filtered*100.0f);break;
+	case 15: response = (int16_t)(inverter.I_d_filtered*100.0f);break;
+	case 16: response = (int16_t)(inverter.I_q_filtered*100.0f);break;
 	//case 17: response = encoder_actual_position;break;
-	//case 18: response = calculated_voltage_vector*10.0f;break;
+	case 18: response = inverter.output_voltage*10.0f;break;
 
 	/*case 20: response = parameter_set.motor_feedback_type;break;
 	case 21: response = parameter_set.encoder_electric_angle_correction;break;
@@ -108,7 +108,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	case 6: //speed setpoint in rpm
 	{int16_t received_speed=value;
 	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current){
-		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.stator_field_speed = (float)received_speed*(_2_PI/MOTOR_CTRL_LOOP_FREQ);}
+		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.stator_field_speed = ((float)received_speed*(_2_PI/MOTOR_CTRL_LOOP_FREQ))/10.0f;}
 	}
 	//if(control_mode==foc){
 	//	if((received_speed)<=5000 && (received_speed)>=(-5000) ){speed_setpoint_rpm = received_speed;}
@@ -119,35 +119,28 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	{if(inverter.control_mode==manual){
 		if(value<=4000 && value>=0){inverter.output_voltage = ((float)value/10.0f);}
 		}
-	/*if(control_mode==open_loop_current){
+	if(inverter.control_mode==open_loop_current || inverter.control_mode==foc ){
 		int16_t received_torque_setpoint = (int16_t)value;
-		if(received_torque_setpoint>=0 && received_torque_setpoint<=1000){
-			if(speed_setpoint_rpm==0){
-				torque_setpoint=(received_torque_setpoint/1000.0f)*parameter_set.motor_nominal_current;
-			}
+		if(received_torque_setpoint>=-3000 && received_torque_setpoint<=3000){
+			//if(speed_setpoint_rpm==0){
+				inverter.torque_current_setpoint=(received_torque_setpoint/1000.0f)*parameter_set.motor_nominal_current;
+			//}
 		}
 	}
-	if(control_mode==foc){
-		int16_t received_torque_setpoint = (int16_t)value;
-		if(received_torque_setpoint>=-4000 && received_torque_setpoint<=4000){
-			if(speed_setpoint_rpm==0){
-				torque_setpoint=(received_torque_setpoint/1000.0f)*parameter_set.motor_nominal_current;
-			}
-		}
-	}*/
 	break;
 	}
-	/*
+
 	case 8:
 	{
-		if(control_mode==foc){
+		if(inverter.control_mode==open_loop_current || inverter.control_mode==foc){
 			int16_t received_field_setpoint = value;
 			if(received_field_setpoint>=-1000 && received_field_setpoint<=1000){
-				id_setpoint=(received_field_setpoint/1000.0f)*parameter_set.motor_nominal_current;
+				inverter.field_current_setpoint=(received_field_setpoint/1000.0f)*parameter_set.motor_nominal_current;
 			}
 		}
 		break;
 	}
+	/*
 	//feedback type
 	case 20:
 	{

@@ -19,8 +19,8 @@ extern SPI_HandleTypeDef hspi2;
 
 //DEFAULT PARAMETER SET FROM DRIVE ROM, values would reset between restarts, @TODO: read and write parameter set from flash on boot
 parameter_set_t parameter_set={
-		.motor_max_current=3.0f, //14.3 according to datasheet
-		.motor_nominal_current=2.5f,
+		.motor_max_current=10.0f, //14.3 according to datasheet
+		.motor_nominal_current=4.5f,
 		.motor_pole_pairs=5, //4 for abb motor 5 for bch and mitsubishi hf-kn43
 		.motor_max_voltage=110.0f,
 		.motor_max_torque=7.17f,
@@ -77,6 +77,14 @@ inverter_t inverter={
 		.I_U=0.0f,
 		.I_V=0.0f,
 		.I_W=0.0f,
+		.I_alpha=0.0f,
+		.I_beta=0.0f,
+		.I_d=0.0f,
+		.I_q=0.0f,
+		.I_d_filtered=0.0f,
+		.I_q_filtered=0.0f,
+		.I_d_last=0.0f, //values from previous control loop iteration
+		.I_q_last=0.0f,
 		.RMS_current={
 				.rms_count=0,
 				.I_U_square_sum=0.0f,
@@ -84,9 +92,14 @@ inverter_t inverter={
 				.I_W_square_sum=0.0f
 		},
 		.I_RMS=0.0f,
+		.U_q=0.0f,
+		.U_d=0.0f,
 		.U_U=0.0f,
 		.U_V=0.0f,
 		.U_W=0.0f,
+
+		.torque_current_setpoint=0.0f,
+		.field_current_setpoint=0.0f,
 
 		.id_current_controller_data = {
 				0.0f,
@@ -207,6 +220,29 @@ void HOT_ADC_calculate_avg(){
 	inverter.HOT_ADC.IGBTtemp_sum=0;
 }
 
+void clarke_transform(float I_U,float I_V,float * I_alpha,float * I_beta){
+	* I_alpha=I_U;
+	* I_beta=(0.5773502f * I_U) + (1.1547005f * I_V);
+}
+void park_transform(float I_alpha,float I_beta,float angle,float * I_d,float * I_q){
+	*I_d = (I_alpha * cosf(angle)) + (I_beta * sinf(angle));
+	*I_q = (I_alpha * sinf(angle)*(-1)) + (I_beta * cosf(angle));
+}
+
+
+void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float * U_beta){
+	*U_alpha= (U_d * cosf(angle)) - (U_q * sinf(angle));
+	*U_beta = (U_d * sinf(angle)) + (U_q * cosf(angle));
+}
+
+//Tf - filter time constant in seconds
+float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_value){
+	float alpha = Tf/(Tf + 0.0002f); //0.0002 = 1/5kHz - pwm interrupt frequency and sampling
+	float filtered_value = (alpha*(*last_filtered_value)) + ((1.0f - alpha)*actual_measurement);
+	*last_filtered_value = filtered_value;
+	return filtered_value;
+}
+
 /**
   * @brief  Synthesize output voltage with PWM using sinusoidal PWM algorythm
   * @param  vector of the output voltage
@@ -233,12 +269,12 @@ void output_sine_pwm(output_voltage_vector_t voltage_vector){
 		if(inverter.U_W>0.0f){inverter.U_W+=U_sat;}
 		if(inverter.U_W<0.0f){inverter.U_W-=U_sat;}
 		 */
-		if(inverter.I_U>=0.0f){inverter.U_U-=U_sat;}
-		if(inverter.I_U<0.0f){inverter.U_U+=U_sat;}
-		if(inverter.I_V>=0.0f){inverter.U_V-=U_sat;}
-		if(inverter.I_V<0.0f){inverter.U_V+=U_sat;}
-		if(inverter.I_W>=0.0f){inverter.U_W-=U_sat;}
-		if(inverter.I_W<0.0f){inverter.U_W+=U_sat;}
+		if(inverter.I_U>=0.0f){inverter.U_U+=U_sat;}
+		if(inverter.I_U<0.0f){inverter.U_U-=U_sat;}
+		if(inverter.I_V>=0.0f){inverter.U_V+=U_sat;}
+		if(inverter.I_V<0.0f){inverter.U_V-=U_sat;}
+		if(inverter.I_W>=0.0f){inverter.U_W+=U_sat;}
+		if(inverter.I_W<0.0f){inverter.U_W-=U_sat;}
 
 		float U_U=((inverter.U_U/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f))+inverter.duty_cycle_limit/2.0f;
 		float U_V=((inverter.U_V/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f))+inverter.duty_cycle_limit/2.0f;
@@ -383,29 +419,79 @@ void DCBus_voltage_check(void){
  * @retval null
  */
 void motor_control_loop(void){
-	HAL_GPIO_TogglePin(ETH_CS_GPIO_Port, ETH_CS_Pin);
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
+
+	inverter.id_current_controller_data.proportional_gain=parameter_set.field_current_ctrl_proportional_gain;
+	inverter.id_current_controller_data.integral_gain=parameter_set.field_current_ctrl_integral_gain;
+	inverter.id_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
+	inverter.id_current_controller_data.output_limit=inverter.DCbus_voltage;
+	inverter.iq_current_controller_data.proportional_gain=parameter_set.torque_current_ctrl_proportional_gain;
+	inverter.iq_current_controller_data.integral_gain=parameter_set.torque_current_ctrl_integral_gain;
+	inverter.iq_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
+	inverter.iq_current_controller_data.output_limit=inverter.DCbus_voltage;
+	inverter.speed_controller_data.proportional_gain=parameter_set.speed_controller_proportional_gain;
+	inverter.speed_controller_data.integral_gain=parameter_set.speed_controller_integral_gain;
+	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current;
+	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current;
+
+
 	//run RMS calculation loop
 	RMS_current_calculation_loop();
+	clarke_transform(inverter.I_U, inverter.I_V, &inverter.I_alpha, &inverter.I_beta);
 
+	//increment stator electric angle based on set frequency if not in foc mode
 	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current ){
-		//increment stator electric angle based on set frequency
 		if(inverter.state==run){inverter.stator_electric_angle+=inverter.stator_field_speed;}
 		if(inverter.stator_electric_angle>_2_PI){inverter.stator_electric_angle-=_2_PI;}
 		if(inverter.stator_electric_angle<0.0f){inverter.stator_electric_angle+=_2_PI;}
-		//if in u/f mode calculate voltage for given frequency
-		if(inverter.control_mode==u_f){
-			inverter.output_voltage=(inverter.stator_field_speed/parameter_set.motor_base_frequency)*parameter_set.motor_max_voltage;
-		}
-		//calculate voltage vectors
-		inverter.output_voltage_vector.U_Alpha=sinf(inverter.stator_electric_angle)*inverter.output_voltage;
-		inverter.output_voltage_vector.U_Beta=cosf(inverter.stator_electric_angle)*inverter.output_voltage;
 	}
+
+
+	//if in u/f mode calculate voltage for given frequency
+	if(inverter.control_mode==u_f){
+		inverter.output_voltage=(inverter.stator_field_speed/parameter_set.motor_base_frequency)*parameter_set.motor_max_voltage;
+	}
+	//calculate field and torque currents
+	if(inverter.control_mode!=foc){
+		park_transform(inverter.I_alpha, inverter.I_beta, inverter.stator_electric_angle, &inverter.I_d, &inverter.I_q);
+	}else{
+		//park_transform(inverter.I_alpha, inverter.I_beta, ////electric angle from encoder////, &inverter.I_d, &inverter.I_q);
+	}
+
+
+	//low pass filter of current vector values
+	inverter.I_d_filtered = LowPassFilter(parameter_set.current_filter_ts, inverter.I_d, &inverter.I_d_last);
+	inverter.I_q_filtered = LowPassFilter(parameter_set.current_filter_ts, inverter.I_q, &inverter.I_q_last);
+
+
+	//PI control of voltage vector
+	if(inverter.control_mode==open_loop_current && inverter.state==run){
+		inverter.U_q = PI_control(&inverter.iq_current_controller_data,inverter.torque_current_setpoint-inverter.I_q_filtered);
+		inverter.U_d = PI_control(&inverter.id_current_controller_data,inverter.field_current_setpoint-inverter.I_d_filtered);
+		inv_park_transform(inverter.U_d, inverter.U_q, inverter.stator_electric_angle, &inverter.output_voltage_vector.U_Alpha, &inverter.output_voltage_vector.U_Beta);
+	}
+	if(inverter.control_mode==foc && inverter.state==run){
+		inverter.U_q = PI_control(&inverter.iq_current_controller_data,inverter.torque_current_setpoint-inverter.I_q_filtered);
+		inverter.U_d = PI_control(&inverter.id_current_controller_data,inverter.field_current_setpoint-inverter.I_d_filtered);
+		//inv_park_transform(inverter.U_d, inverter.U_q, /////encoder electric angle here/////, &inverter.output_voltage_vector.U_Alpha, &inverter.output_voltage_vector.U_Beta);
+	}
+
+
+	//calculate voltage vectors if manual or u/f
+	if(inverter.control_mode==manual || inverter.control_mode==u_f){
+		inverter.output_voltage_vector.U_Alpha=cosf(inverter.stator_electric_angle)*inverter.output_voltage;
+		inverter.output_voltage_vector.U_Beta=sinf(inverter.stator_electric_angle)*inverter.output_voltage;
+	}else{
+		inverter.output_voltage=hypotf(inverter.output_voltage_vector.U_Alpha,inverter.output_voltage_vector.U_Beta);
+	}
+
+	//synthesize PWM times from stator voltage vector
+	output_sine_pwm(inverter.output_voltage_vector);
 
 	//start SPI transaction with ADC on primary side
 	HOT_ADC_read();
 
-	//send calculated vector to igbt PWM
-	output_sine_pwm(inverter.output_voltage_vector);
-	HAL_GPIO_TogglePin(ETH_CS_GPIO_Port, ETH_CS_Pin);
+
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 }
 

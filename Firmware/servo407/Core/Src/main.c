@@ -1108,8 +1108,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 			avg_V_samples+=inverter.output_current_adc_buffer[i+1];
 		}
 		//calculate phase current
-		inverter.I_U=((float)avg_U_samples/5.0f-inverter.zerocurrent_ADC_samples_U)/ADC_SAMPLES_PER_AMP;
-		inverter.I_V=((float)avg_V_samples/5.0f-inverter.zerocurrent_ADC_samples_V)/ADC_SAMPLES_PER_AMP;
+		inverter.I_U=-((float)avg_U_samples/5.0f-inverter.zerocurrent_ADC_samples_U)/ADC_SAMPLES_PER_AMP;
+		inverter.I_V=-((float)avg_V_samples/5.0f-inverter.zerocurrent_ADC_samples_V)/ADC_SAMPLES_PER_AMP;
 		inverter.I_W=-inverter.I_U-inverter.I_V;
 	}
 	//calculation takes 2us, aquisition of 5(10) samples takes 12,5us
