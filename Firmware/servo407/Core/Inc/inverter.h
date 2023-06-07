@@ -58,7 +58,7 @@ typedef struct _RMS_current_t{
 }RMS_current_t;
 
 typedef struct _inverter_t {
-inverter_error_t error;
+uint32_t error;
 inverter_state_t state;
 control_mode_t control_mode;
 uint16_t duty_cycle_limit;
@@ -81,6 +81,7 @@ HOT_ADC_t HOT_ADC;
 float DCbus_volts_for_sample;
 float igbt_overtemperature_limit;
 float undervoltage_limit;
+float overvoltage_limit;
 
 uint16_t encoder_raw_position;
 uint8_t speed_measurement_loop_i;

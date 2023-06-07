@@ -19,10 +19,10 @@ extern SPI_HandleTypeDef hspi2;
 
 //DEFAULT PARAMETER SET FROM DRIVE ROM, values would reset between restarts, @TODO: read and write parameter set from flash on boot
 parameter_set_t parameter_set={
-		.motor_max_current=10.0f, //14.3 according to datasheet
-		.motor_nominal_current=4.5f,
+		.motor_max_current=9.0f, //14.3 according to datasheet
+		.motor_nominal_current=5.0f,
 		.motor_pole_pairs=4, //4 for abb motor 5 for bch and mitsubishi hf-kn43
-		.motor_max_voltage=110.0f,
+		.motor_max_voltage=170.0f,
 		.motor_max_torque=7.17f,
 		.motor_nominal_torque=2.39f,
 		.motor_nominal_speed=3000,
@@ -81,6 +81,7 @@ inverter_t inverter={
 		.DCbus_volts_for_sample=0.421f,
 		.igbt_overtemperature_limit=65.0f,
 		.undervoltage_limit=10,
+		.overvoltage_limit=380.0f,
 		.encoder_raw_position=0,
 		.speed_measurement_loop_i=0,
 		.I_U=0.0f,
@@ -162,7 +163,6 @@ void inverter_enable(){
 		HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
 		HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_3);
 		HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
-
 	}
 }
 
@@ -230,13 +230,17 @@ void HOT_ADC_RX_Cplt(){
 	inverter.HOT_ADC.measurement_loop_iteration++;
 	if(inverter.HOT_ADC.measurement_loop_iteration>=8){
 		HOT_ADC_calculate_avg();
-	}else{
-		HOT_ADC_read();
+	}
+	if(HOT_ADC_read()!=HAL_OK){
+		inverter_error_trip(adc_no_communication);
 	}
 }
 
 void HOT_ADC_calculate_avg(){
 	inverter.DCbus_voltage=(inverter.HOT_ADC.DCVolt_sum/(inverter.HOT_ADC.measurement_loop_iteration/2))*inverter.DCbus_volts_for_sample;
+	if(inverter.DCbus_voltage>inverter.overvoltage_limit){
+		inverter_error_trip(overvoltage);
+	}
 	float U_thermistor=((inverter.HOT_ADC.IGBTtemp_sum/(inverter.HOT_ADC.measurement_loop_iteration/2))/1024.0f)*5.0f;
 	float R_thermistor=22000*(1.0f/((5.0f/(U_thermistor))-1.0f));
 	inverter.IGBT_temp=(1.0f/((logf(R_thermistor/85000.0f)/(4092.0f))+(1.0f/298.15f)))-273.15f;
@@ -463,15 +467,15 @@ void motor_control_loop(void){
 	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current;
 
 
-	//run RMS calculation loop
+	//run RMS current calculation loop
 	RMS_current_calculation_loop();
 	clarke_transform(inverter.I_U, inverter.I_V, &inverter.I_alpha, &inverter.I_beta);
 
 
-	//calculate rotor electric angle
-	if(parameter_set.motor_feedback_type==mitsubishi_encoder){
-		mitsubishi_encoder_process_data();
-	}
+	//calculate/get rotor electric angle
+	//if(parameter_set.motor_feedback_type==mitsubishi_encoder){
+	//	mitsubishi_encoder_process_data();
+	//}
 
 	//calculate torque angle
 	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}
@@ -544,15 +548,15 @@ void motor_control_loop(void){
 	output_sine_pwm(inverter.output_voltage_vector);
 
 	//start SPI transaction with ADC on primary side
-	HAL_StatusTypeDef status;
-	status=HOT_ADC_read();
-	if(status!=HAL_OK){
+	//HAL_StatusTypeDef status;
+	//status=HOT_ADC_read();
+	//if(status!=HAL_OK){
 		//inverter_error_trip(adc_no_communication);
-	}
+	//}
 
 
 	//start data tansaction with encoder
-	if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){mitsubishi_encoder_send_command();}
+	//if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){mitsubishi_encoder_send_command();}
 
 
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);

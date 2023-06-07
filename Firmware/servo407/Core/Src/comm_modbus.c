@@ -50,6 +50,7 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 16: response = (int16_t)(inverter.I_q_filtered*100.0f);break;
 	case 17: response = inverter.encoder_raw_position;break;
 	case 18: response = inverter.output_voltage*10.0f;break;
+	case 19: response = inverter.IGBT_temp;break;
 
 	case 20: response = parameter_set.motor_feedback_type;break;
 	case 21: response = (int16_t)(parameter_set.encoder_electric_angle_correction*(180.0f/_PI));break;

@@ -1119,6 +1119,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		inverter.I_U=-((float)avg_U_samples/5.0f-inverter.zerocurrent_ADC_samples_U)/ADC_SAMPLES_PER_AMP;
 		inverter.I_V=-((float)avg_V_samples/5.0f-inverter.zerocurrent_ADC_samples_V)/ADC_SAMPLES_PER_AMP;
 		inverter.I_W=-inverter.I_U-inverter.I_V;
+		//motor current limit
+		if(inverter.I_U>parameter_set.motor_max_current || inverter.I_U<(-parameter_set.motor_max_current)){inverter_error_trip(motor_overcurrent);}
+		if(inverter.I_V>parameter_set.motor_max_current || inverter.I_V<(-parameter_set.motor_max_current)){inverter_error_trip(motor_overcurrent);}
+		if(inverter.I_W>parameter_set.motor_max_current || inverter.I_W<(-parameter_set.motor_max_current)){inverter_error_trip(motor_overcurrent);}
 	}
 	//calculation takes 2us, aquisition of 5(10) samples takes 12,5us
 }
@@ -1153,7 +1157,7 @@ void StartDefaultTask(void *argument)
 	 for(;;)
 	 {
 		 osDelay(1);
-		 //DCBus_voltage_check();
+		 DCBus_voltage_check();
 
 		 /*if(HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin)==0){
 			 if(inverter.state==stop){inverter_enable();}
