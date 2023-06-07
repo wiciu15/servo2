@@ -20,6 +20,7 @@
 
 #include "pid.h"
 #include "parameter_set.h"
+#include "mitsubishi_encoder.h"
 
 //list of possible inverter errors that need to inhibit output and trip the inverter
 typedef enum {no_error,
@@ -32,6 +33,7 @@ typedef enum {no_error,
 	motor_overcurrent,
 	encoder_error_communication,
 	encoder_error_mechanical,
+	adc_no_communication,
 	internal_software,
 	external_comm
 }inverter_error_t;
@@ -62,6 +64,12 @@ control_mode_t control_mode;
 uint16_t duty_cycle_limit;
 output_voltage_vector_t output_voltage_vector;
 float stator_electric_angle;
+float rotor_electric_angle;
+float last_rotor_electric_angle;
+float rotor_speed;
+float last_rotor_speed;
+float filtered_rotor_speed;
+float torque_angle;
 float output_voltage;
 float stator_field_speed;
 float DCbus_voltage;
@@ -73,6 +81,9 @@ HOT_ADC_t HOT_ADC;
 float DCbus_volts_for_sample;
 float igbt_overtemperature_limit;
 float undervoltage_limit;
+
+uint16_t encoder_raw_position;
+uint8_t speed_measurement_loop_i;
 float I_U;
 float I_V;
 float I_W;
@@ -93,6 +104,7 @@ float U_V;
 float U_W;
 float torque_current_setpoint;
 float field_current_setpoint;
+float speed_setpoint;
 PID_t id_current_controller_data;
 PID_t iq_current_controller_data;
 PID_t speed_controller_data;
@@ -105,7 +117,7 @@ void inverter_setup(void);
 void inverter_enable(void);
 void inverter_disable(void);
 void inverter_error_trip(uint8_t error_number);
-void HOT_ADC_read(void);
+HAL_StatusTypeDef HOT_ADC_read(void);
 void HOT_ADC_RX_Cplt(void);
 void HOT_ADC_calculate_avg(void);
 void clarke_transform(float I_U,float I_V,float * I_alpha,float * I_beta);

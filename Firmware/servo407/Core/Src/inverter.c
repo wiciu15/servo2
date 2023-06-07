@@ -21,7 +21,7 @@ extern SPI_HandleTypeDef hspi2;
 parameter_set_t parameter_set={
 		.motor_max_current=10.0f, //14.3 according to datasheet
 		.motor_nominal_current=4.5f,
-		.motor_pole_pairs=5, //4 for abb motor 5 for bch and mitsubishi hf-kn43
+		.motor_pole_pairs=4, //4 for abb motor 5 for bch and mitsubishi hf-kn43
 		.motor_max_voltage=110.0f,
 		.motor_max_torque=7.17f,
 		.motor_nominal_torque=2.39f,
@@ -31,9 +31,10 @@ parameter_set_t parameter_set={
 		.motor_rs=0.25f,
 		.motor_ls=0.002f, //winding inductance in H
 		.motor_K=0.18f,  //electical constant in V/(rad/s*pole_pairs) 1000RPM=104.719rad/s
-		.motor_feedback_type=delta_encoder,
-		.encoder_electric_angle_correction=-60, //-90 for abb BSM, 0 for bch, 0 for abb esm18, 60 for hf-kn43
+		.motor_feedback_type=mitsubishi_encoder,
+		.encoder_electric_angle_correction=-1.570796f, //-90 for abb BSM, 0 for bch, 0 for abb esm18, 60 for hf-kn43
 		.encoder_resolution=5000,
+
 
 		.current_filter_ts=0.001f,
 		.torque_current_ctrl_proportional_gain=3.9f, //gain in V/A
@@ -58,6 +59,12 @@ inverter_t inverter={
 				.U_Beta=0.0f
 		},
 		.stator_electric_angle=0.0f,
+		.rotor_electric_angle=0.0f,
+		.last_rotor_electric_angle=0.0f,
+		.rotor_speed=0.0f,
+		.last_rotor_speed=0.0f,
+		.filtered_rotor_speed=0.0f,
+		.torque_angle=0.0f,
 		.output_voltage=3.0f,
 		.stator_field_speed=0.0f,
 		.DCbus_voltage=66.6f,
@@ -74,6 +81,8 @@ inverter_t inverter={
 		.DCbus_volts_for_sample=0.421f,
 		.igbt_overtemperature_limit=65.0f,
 		.undervoltage_limit=10,
+		.encoder_raw_position=0,
+		.speed_measurement_loop_i=0,
 		.I_U=0.0f,
 		.I_V=0.0f,
 		.I_W=0.0f,
@@ -100,6 +109,7 @@ inverter_t inverter={
 
 		.torque_current_setpoint=0.0f,
 		.field_current_setpoint=0.0f,
+		.speed_setpoint=0.0f,
 
 		.id_current_controller_data = {
 				0.0f,
@@ -157,9 +167,9 @@ void inverter_enable(){
 }
 
 /**
-  * @brief  Disable PWM output of the inverter
-  * @retval null
-  */
+ * @brief  Disable PWM output of the inverter
+ * @retval null
+ */
 void inverter_disable(){
 	if(inverter.state==run){inverter.state=stop;}
 	HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_1);
@@ -168,6 +178,18 @@ void inverter_disable(){
 	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3);
+
+	inverter.id_current_controller_data.last_error=0.0f;
+	inverter.id_current_controller_data.last_integral=0.0f;
+	inverter.id_current_controller_data.last_output=0.0f;
+
+	inverter.iq_current_controller_data.last_error=0.0f;
+	inverter.iq_current_controller_data.last_integral=0.0f;
+	inverter.iq_current_controller_data.last_output=0.0f;
+
+	inverter.speed_controller_data.last_error=0.0f;
+	inverter.speed_controller_data.last_integral=0.0f;
+	inverter.speed_controller_data.last_output=0.0f;
 	//HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);
 }
 
@@ -182,13 +204,19 @@ void inverter_error_trip(uint8_t error_number){
 	inverter.error|=1<<(error_number-1);
 }
 
-void HOT_ADC_read(){
-	HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, 0);
-	if(inverter.HOT_ADC.measurement_loop_iteration%2==0){
-	HAL_SPI_TransmitReceive_DMA(&hspi2, inverter.HOT_ADC.HOT_ADC_tx_buffer, inverter.HOT_ADC.HOT_ADC_rx_buffer, 2);
-	}else{
-		HAL_SPI_TransmitReceive_DMA(&hspi2, inverter.HOT_ADC.HOT_ADC_tx_buffer+2, inverter.HOT_ADC.HOT_ADC_rx_buffer, 2);
+HAL_StatusTypeDef HOT_ADC_read(){
+	if(!HAL_GPIO_ReadPin(ADC_CS_GPIO_Port, ADC_CS_Pin)){ //rx complete didnt occur so restart spi
+		HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, 1);
+		HAL_SPI_Abort(&hspi2);
 	}
+	HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, 0);
+	HAL_StatusTypeDef  status;
+	if(inverter.HOT_ADC.measurement_loop_iteration%2==0){
+	status=HAL_SPI_TransmitReceive_DMA(&hspi2, inverter.HOT_ADC.HOT_ADC_tx_buffer, inverter.HOT_ADC.HOT_ADC_rx_buffer, 2);
+	}else{
+		status=HAL_SPI_TransmitReceive_DMA(&hspi2, inverter.HOT_ADC.HOT_ADC_tx_buffer+2, inverter.HOT_ADC.HOT_ADC_rx_buffer, 2);
+	}
+	return status;
 }
 
 void HOT_ADC_RX_Cplt(){
@@ -439,6 +467,33 @@ void motor_control_loop(void){
 	RMS_current_calculation_loop();
 	clarke_transform(inverter.I_U, inverter.I_V, &inverter.I_alpha, &inverter.I_beta);
 
+
+	//calculate rotor electric angle
+	if(parameter_set.motor_feedback_type==mitsubishi_encoder){
+		mitsubishi_encoder_process_data();
+	}
+
+	//calculate torque angle
+	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}
+	else if(inverter.stator_electric_angle-inverter.rotor_electric_angle<(-_PI)){inverter.torque_angle=inverter.stator_electric_angle-inverter.rotor_electric_angle + _2_PI;}
+	else{inverter.torque_angle=inverter.stator_electric_angle-inverter.rotor_electric_angle;}
+
+	//calculate rotor speed
+	if(inverter.speed_measurement_loop_i>=10){
+		float speed_calc_angle_delta=inverter.rotor_electric_angle-inverter.last_rotor_electric_angle;
+		inverter.rotor_speed=((speed_calc_angle_delta)/parameter_set.motor_pole_pairs)*9.549296f*(MOTOR_CTRL_LOOP_FREQ/10.0f);
+		//speed(rpm) = ((x(deg)/polepairs)/360deg)/(0,002(s)/60s)
+		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(MOTOR_CTRL_LOOP_FREQ/10);
+		if(inverter.rotor_speed>theoretical_encoder_speed/2.0f){inverter.rotor_speed-=theoretical_encoder_speed;}if(inverter.rotor_speed<(-theoretical_encoder_speed/2.0f)){inverter.rotor_speed+=theoretical_encoder_speed;}
+		inverter.last_rotor_electric_angle = inverter.rotor_electric_angle;
+		if(inverter.control_mode==foc && inverter.speed_setpoint!=0){
+			inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint-inverter.filtered_rotor_speed);
+		}
+		inverter.speed_measurement_loop_i=0;
+	}
+	inverter.speed_measurement_loop_i++;
+	inverter.filtered_rotor_speed=LowPassFilter(parameter_set.speed_filter_ts,inverter.rotor_speed, &inverter.last_rotor_speed);
+
 	//increment stator electric angle based on set frequency if not in foc mode
 	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current ){
 		if(inverter.state==run){inverter.stator_electric_angle+=inverter.stator_field_speed;}
@@ -455,7 +510,7 @@ void motor_control_loop(void){
 	if(inverter.control_mode!=foc){
 		park_transform(inverter.I_alpha, inverter.I_beta, inverter.stator_electric_angle, &inverter.I_d, &inverter.I_q);
 	}else{
-		//park_transform(inverter.I_alpha, inverter.I_beta, ////electric angle from encoder////, &inverter.I_d, &inverter.I_q);
+		park_transform(inverter.I_alpha, inverter.I_beta, inverter.rotor_electric_angle, &inverter.I_d, &inverter.I_q);
 	}
 
 
@@ -473,7 +528,7 @@ void motor_control_loop(void){
 	if(inverter.control_mode==foc && inverter.state==run){
 		inverter.U_q = PI_control(&inverter.iq_current_controller_data,inverter.torque_current_setpoint-inverter.I_q_filtered);
 		inverter.U_d = PI_control(&inverter.id_current_controller_data,inverter.field_current_setpoint-inverter.I_d_filtered);
-		//inv_park_transform(inverter.U_d, inverter.U_q, /////encoder electric angle here/////, &inverter.output_voltage_vector.U_Alpha, &inverter.output_voltage_vector.U_Beta);
+		inv_park_transform(inverter.U_d, inverter.U_q,  inverter.rotor_electric_angle, &inverter.output_voltage_vector.U_Alpha, &inverter.output_voltage_vector.U_Beta);
 	}
 
 
@@ -489,7 +544,15 @@ void motor_control_loop(void){
 	output_sine_pwm(inverter.output_voltage_vector);
 
 	//start SPI transaction with ADC on primary side
-	HOT_ADC_read();
+	HAL_StatusTypeDef status;
+	status=HOT_ADC_read();
+	if(status!=HAL_OK){
+		//inverter_error_trip(adc_no_communication);
+	}
+
+
+	//start data tansaction with encoder
+	if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){mitsubishi_encoder_send_command();}
 
 
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
