@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "pid.h"
+#include "cmsis_os.h"
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim5;
@@ -25,9 +26,9 @@ parameter_set_t parameter_set={
 		.motor_max_voltage=170.0f,
 		.motor_max_torque=7.17f,
 		.motor_nominal_torque=2.39f,
-		.motor_nominal_speed=3000,
+		.motor_nominal_speed=3000.0f,
 		.motor_base_frequency=200*(_2_PI/MOTOR_CTRL_LOOP_FREQ),
-		.motor_max_speed=5000,
+		.motor_max_speed=500.0f,
 		.motor_rs=0.25f,
 		.motor_ls=0.002f, //winding inductance in H
 		.motor_K=0.18f,  //electical constant in V/(rad/s*pole_pairs) 1000RPM=104.719rad/s
@@ -37,16 +38,16 @@ parameter_set_t parameter_set={
 
 
 		.current_filter_ts=0.001f,
-		.torque_current_ctrl_proportional_gain=3.9f, //gain in V/A
-		.torque_current_ctrl_integral_gain=1000.0f,
-		.field_current_ctrl_proportional_gain=6.1f,
-		.field_current_ctrl_integral_gain=1000.0f,
+		.torque_current_ctrl_proportional_gain=8.0f, //gain in V/A
+		.torque_current_ctrl_integral_gain=2000.0f,
+		.field_current_ctrl_proportional_gain=8.0f,
+		.field_current_ctrl_integral_gain=2000.0f,
 
-		.speed_filter_ts=0.001f,
-		.speed_controller_proportional_gain=0.023f,
-		.speed_controller_integral_gain=0.1f,
+		.speed_filter_ts=0.01f,
+		.speed_controller_proportional_gain=0.04f,
+		.speed_controller_integral_gain=0.6f,
 		.speed_controller_output_torque_limit=1.0f, //limit torque, Iq is the output so the calcualtion is needed to convert N/m to A
-		.speed_controller_integral_limit=1.0f //1.0 is for example, valid iq current gets copied from motor nominal current
+		.speed_controller_integral_limit=1.0f //1.0 is for example, valid iq current gets copied from motor max current
 };
 
 inverter_t inverter={
@@ -138,11 +139,15 @@ inverter_t inverter={
 float U_sat=2.0f;
 
 /**
-  * @brief  Set up inverter for operation
-  * @retval null
-  */
+ * @brief  Set up inverter for operation
+ * @retval null
+ */
 void inverter_setup(void){
 	HAL_ADC_Start_DMA(&hadc2, inverter.output_current_adc_buffer, 10);//start current reading
+	if(parameter_set.motor_feedback_type!=no_feedback){
+		HAL_GPIO_WritePin(ENC_ENABLE_GPIO_Port, ENC_ENABLE_Pin, 1);
+		osDelay(30);
+	}
 	if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
 	HAL_TIM_Base_Start_IT(&htim5);
 	HOT_ADC_read(); //start igbt temp and dc link reading
@@ -268,7 +273,7 @@ void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float
 
 //Tf - filter time constant in seconds
 float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_value){
-	float alpha = Tf/(Tf + 0.0002f); //0.0002 = 1/5kHz - pwm interrupt frequency and sampling
+	float alpha = Tf/(Tf + 0.000125f); //0.000125 = 1/8kHz - pwm interrupt frequency and sampling
 	float filtered_value = (alpha*(*last_filtered_value)) + ((1.0f - alpha)*actual_measurement);
 	*last_filtered_value = filtered_value;
 	return filtered_value;
@@ -458,12 +463,17 @@ void motor_control_loop(void){
 	inverter.id_current_controller_data.output_limit=inverter.DCbus_voltage;
 	inverter.iq_current_controller_data.proportional_gain=parameter_set.torque_current_ctrl_proportional_gain;
 	inverter.iq_current_controller_data.integral_gain=parameter_set.torque_current_ctrl_integral_gain;
-	inverter.iq_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
-	inverter.iq_current_controller_data.output_limit=inverter.DCbus_voltage;
+	if(inverter.DCbus_voltage>parameter_set.motor_max_voltage){
+		inverter.iq_current_controller_data.antiwindup_limit=parameter_set.motor_max_voltage;
+		inverter.iq_current_controller_data.output_limit=parameter_set.motor_max_voltage;
+	}else{
+		inverter.iq_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
+		inverter.iq_current_controller_data.output_limit=inverter.DCbus_voltage;
+	}
 	inverter.speed_controller_data.proportional_gain=parameter_set.speed_controller_proportional_gain;
 	inverter.speed_controller_data.integral_gain=parameter_set.speed_controller_integral_gain;
-	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current;
-	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current;
+	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current*0.9f;
+	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current*0.9f;
 
 
 	//run RMS current calculation loop
@@ -489,13 +499,16 @@ void motor_control_loop(void){
 		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(MOTOR_CTRL_LOOP_FREQ/10);
 		if(inverter.rotor_speed>theoretical_encoder_speed/2.0f){inverter.rotor_speed-=theoretical_encoder_speed;}if(inverter.rotor_speed<(-theoretical_encoder_speed/2.0f)){inverter.rotor_speed+=theoretical_encoder_speed;}
 		inverter.last_rotor_electric_angle = inverter.rotor_electric_angle;
-		if(inverter.control_mode==foc && inverter.speed_setpoint!=0){
+		if(inverter.control_mode==foc && inverter.speed_setpoint!=0 && inverter.state==run){
 			inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint-inverter.filtered_rotor_speed);
 		}
 		inverter.speed_measurement_loop_i=0;
 	}
 	inverter.speed_measurement_loop_i++;
 	inverter.filtered_rotor_speed=LowPassFilter(parameter_set.speed_filter_ts,inverter.rotor_speed, &inverter.last_rotor_speed);
+	if(inverter.filtered_rotor_speed>parameter_set.motor_max_speed +400.0f || inverter.filtered_rotor_speed<(-parameter_set.motor_max_speed-400.0f)){
+		inverter_error_trip(overspeed);
+	}
 
 	//increment stator electric angle based on set frequency if not in foc mode
 	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current ){
@@ -529,8 +542,15 @@ void motor_control_loop(void){
 		inv_park_transform(inverter.U_d, inverter.U_q, inverter.stator_electric_angle, &inverter.output_voltage_vector.U_Alpha, &inverter.output_voltage_vector.U_Beta);
 	}
 	if(inverter.control_mode==foc && inverter.state==run){
-		inverter.U_q = PI_control(&inverter.iq_current_controller_data,inverter.torque_current_setpoint-inverter.I_q_filtered);
-		inverter.U_d = PI_control(&inverter.id_current_controller_data,inverter.field_current_setpoint-inverter.I_d_filtered);
+		//speed limiter removes torque if motor spins too fast
+		if(inverter.filtered_rotor_speed>parameter_set.motor_max_speed || inverter.filtered_rotor_speed<(-parameter_set.motor_max_speed)){
+			//@TODO: implement speed limiter based on some linear decrease of torque instead of setting 0.0 setpoint - motor vibrates at speed limit
+			inverter.U_q = PI_control(&inverter.iq_current_controller_data,0.0f-inverter.I_q_filtered);
+			inverter.U_d = PI_control(&inverter.id_current_controller_data,inverter.field_current_setpoint-inverter.I_d_filtered);
+		}else{
+			inverter.U_q = PI_control(&inverter.iq_current_controller_data,inverter.torque_current_setpoint-inverter.I_q_filtered);
+			inverter.U_d = PI_control(&inverter.id_current_controller_data,inverter.field_current_setpoint-inverter.I_d_filtered);
+		}
 		inv_park_transform(inverter.U_d, inverter.U_q,  inverter.rotor_electric_angle, &inverter.output_voltage_vector.U_Alpha, &inverter.output_voltage_vector.U_Beta);
 	}
 

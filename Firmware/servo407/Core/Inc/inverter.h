@@ -33,6 +33,7 @@ typedef enum {no_error,
 	motor_overcurrent,
 	encoder_error_communication,
 	encoder_error_mechanical,
+	overspeed,
 	adc_no_communication,
 	internal_software,
 	external_comm

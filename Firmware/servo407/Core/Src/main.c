@@ -1158,7 +1158,6 @@ void StartDefaultTask(void *argument)
 	{
 		osDelay(1);
 		DCBus_voltage_check();
-		if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
 		process_modbus_command();
 
 	}

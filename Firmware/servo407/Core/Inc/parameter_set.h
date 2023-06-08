@@ -19,9 +19,9 @@ typedef struct _parameter_set_t{
 	float motor_max_voltage;
 	float motor_max_torque;
 	float motor_nominal_torque;
-	uint16_t motor_nominal_speed;
+	float motor_nominal_speed;
 	float motor_base_frequency;
-	uint16_t motor_max_speed;
+	float motor_max_speed;
 	float motor_rs;
 	float motor_ls;
 	float motor_K;

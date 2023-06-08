@@ -21,21 +21,21 @@ HAL_StatusTypeDef USART_fast_transmit_RS485(UART_HandleTypeDef * huart, uint8_t 
 	uint32_t timeout_clock=0;
 	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 1);
 	huart->Instance->DR=byte_to_send;
-	while(!__HAL_UART_GET_FLAG(huart,UART_FLAG_TC)){timeout_clock++;if(timeout_clock>30){break;}	} //break out of loop if transfer is not finished within <1us to prevent blocking the CPU in case of error
-	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 0);
+	while(!__HAL_UART_GET_FLAG(huart,UART_FLAG_TC)){timeout_clock++;if(timeout_clock>40){break;}} //break out of loop if transfer is not finished within <1us to prevent blocking the CPU in case of error
+	ENCODER_DE_GPIO_Port->BSRR = (uint32_t)ENCODER_DE_Pin << 16U;
 	if(timeout_clock<30){return HAL_OK;}
 	return HAL_ERROR;
 }
 
 void mitsubishi_motor_identification(void){
 	//first send 4 packets with 0x92 command  (encoder reset probably, then 8 with 0x7A command (motor data read)
-	HAL_GPIO_WritePin(ENC_ENABLE_GPIO_Port, ENC_ENABLE_Pin, 1);
-	osDelay(30);
 	mitsubishi_encoder_data.encoder_command = 0x92;
-	for(uint8_t i=0;i<=8;i++){
+	for(uint8_t i=0;i<=20;i++){
 		if(i>=4){mitsubishi_encoder_data.encoder_command=0x7A;}
 		mitsubishi_encoder_send_command();
 		osDelay(1);
+		if(i>5 && mitsubishi_encoder_data.motor_response[0]==0x7A){break;}
+		if(i>=19){mitsubishi_encoder_data.encoder_state=encoder_error_no_communication;}
 	}
 	//check if encoder sent valid data back by calculating XOR
 	memcpy(&mitsubishi_encoder_data.motor_data_response_packet,&mitsubishi_encoder_data.motor_response,9);
@@ -63,7 +63,7 @@ void mitsubishi_motor_identification(void){
 			else {mitsubishi_encoder_data.encoder_command=0xA2;}
 			//allow hotplug of the encoder
 			mitsubishi_encoder_data.encoder_state=encoder_ok;
-			if(inverter.error==encoder_error_communication){
+			if(inverter.error==encoder_error_no_communication){
 				inverter.error=no_error;
 			}
 		}else{
@@ -131,6 +131,7 @@ void mitsubishi_encoder_send_command(void){
 		mitsubishi_encoder_data.communication_error_count++;
 		if(mitsubishi_encoder_data.communication_error_count>5){mitsubishi_encoder_data.encoder_state=encoder_error_no_communication;memset(&mitsubishi_encoder_data,0,sizeof(mitsubishi_encoder_data_t));inverter_error_trip(encoder_error_communication);}
 	}
+	//@TODO: implement inverter trip when communication is broken
 	if(mitsubishi_encoder_data.communication_error_count<5){
 		mitsubishi_encoder_data.communication_error_count=0;
 	}
