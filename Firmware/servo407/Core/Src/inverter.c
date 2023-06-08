@@ -143,6 +143,7 @@ float U_sat=2.0f;
   */
 void inverter_setup(void){
 	HAL_ADC_Start_DMA(&hadc2, inverter.output_current_adc_buffer, 10);//start current reading
+	if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
 	HAL_TIM_Base_Start_IT(&htim5);
 	HOT_ADC_read(); //start igbt temp and dc link reading
 }
@@ -205,10 +206,6 @@ void inverter_error_trip(uint8_t error_number){
 }
 
 HAL_StatusTypeDef HOT_ADC_read(){
-	if(!HAL_GPIO_ReadPin(ADC_CS_GPIO_Port, ADC_CS_Pin)){ //rx complete didnt occur so restart spi
-		HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, 1);
-		HAL_SPI_Abort(&hspi2);
-	}
 	HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, 0);
 	HAL_StatusTypeDef  status;
 	if(inverter.HOT_ADC.measurement_loop_iteration%2==0){
@@ -231,9 +228,11 @@ void HOT_ADC_RX_Cplt(){
 	if(inverter.HOT_ADC.measurement_loop_iteration>=8){
 		HOT_ADC_calculate_avg();
 	}
-	if(HOT_ADC_read()!=HAL_OK){
-		inverter_error_trip(adc_no_communication);
-	}
+	//this method provides too little delay between transactions and probably caused hot adc communication errors in open loop vector/foc mode
+	//communication with hot adc is now done synchronously in main motor control loop 8khz
+	//if(HOT_ADC_read()!=HAL_OK){
+	//	inverter_error_trip(adc_no_communication);
+	//}
 }
 
 void HOT_ADC_calculate_avg(){
@@ -473,9 +472,9 @@ void motor_control_loop(void){
 
 
 	//calculate/get rotor electric angle
-	//if(parameter_set.motor_feedback_type==mitsubishi_encoder){
-	//	mitsubishi_encoder_process_data();
-	//}
+	if(parameter_set.motor_feedback_type==mitsubishi_encoder){
+		mitsubishi_encoder_process_data();
+	}
 
 	//calculate torque angle
 	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}
@@ -547,18 +546,21 @@ void motor_control_loop(void){
 	//synthesize PWM times from stator voltage vector
 	output_sine_pwm(inverter.output_voltage_vector);
 
-	//start SPI transaction with ADC on primary side
-	//HAL_StatusTypeDef status;
-	//status=HOT_ADC_read();
-	//if(status!=HAL_OK){
-		//inverter_error_trip(adc_no_communication);
-	//}
-
-
 	//start data tansaction with encoder
-	//if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){mitsubishi_encoder_send_command();}
+	if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){
+		mitsubishi_encoder_send_command();
+	}
 
-
+	//check if everything is fine with HOT ADC and reset it with not
+	if(HOT_ADC_read()!=HAL_OK){
+		inverter_error_trip(adc_no_communication);
+	}
+	if(hspi2.ErrorCode!=0){
+		inverter_error_trip(adc_no_communication);
+		HAL_SPI_DeInit(&hspi2);
+		HAL_SPI_Init(&hspi2);
+		HOT_ADC_read();
+	}
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 }
 

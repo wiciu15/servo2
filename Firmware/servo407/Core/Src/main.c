@@ -1138,48 +1138,41 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi){
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
+ * @param  argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
-  /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
-  /* USER CODE BEGIN 5 */
-  Modbus_init();
-	 HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin,0);
-	 HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
-	 inverter_setup();
-	 osDelay(20);
-	 /* Infinite loop */
+	/* init code for USB_DEVICE */
+	MX_USB_DEVICE_Init();
+	/* USER CODE BEGIN 5 */
+	Modbus_init();
+	HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin,0);
+	HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
+	inverter_setup();
+	osDelay(20);
+	/* Infinite loop */
 
-	 for(;;)
-	 {
-		 osDelay(1);
-		 DCBus_voltage_check();
+	for(;;)
+	{
+		osDelay(1);
+		DCBus_voltage_check();
+		if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
+		process_modbus_command();
 
-		 /*if(HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin)==0){
-			 if(inverter.state==stop){inverter_enable();}
-		 }else{
-			 if(inverter.state==run){inverter_disable();}
-		 }*/
-		 if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
-
-		 process_modbus_command();
-
-	 }
-  /* USER CODE END 5 */
+	}
+	/* USER CODE END 5 */
 }
 
 /**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM11 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
+ * @brief  Period elapsed callback in non blocking mode
+ * @note   This function is called  when TIM11 interrupt took place, inside
+ * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+ * a global variable "uwTick" used as application time base.
+ * @param  htim : TIM handle
+ * @retval None
+ */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   /* USER CODE BEGIN Callback 0 */

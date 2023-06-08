@@ -22,7 +22,6 @@ HAL_StatusTypeDef USART_fast_transmit_RS485(UART_HandleTypeDef * huart, uint8_t 
 	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 1);
 	huart->Instance->DR=byte_to_send;
 	while(!__HAL_UART_GET_FLAG(huart,UART_FLAG_TC)){timeout_clock++;if(timeout_clock>30){break;}	} //break out of loop if transfer is not finished within <1us to prevent blocking the CPU in case of error
-	//GPIOC->BSRR = (uint32_t)GPIO_PIN_13 << 16U;
 	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 0);
 	if(timeout_clock<30){return HAL_OK;}
 	return HAL_ERROR;
@@ -31,6 +30,7 @@ HAL_StatusTypeDef USART_fast_transmit_RS485(UART_HandleTypeDef * huart, uint8_t 
 void mitsubishi_motor_identification(void){
 	//first send 4 packets with 0x92 command  (encoder reset probably, then 8 with 0x7A command (motor data read)
 	HAL_GPIO_WritePin(ENC_ENABLE_GPIO_Port, ENC_ENABLE_Pin, 1);
+	osDelay(30);
 	mitsubishi_encoder_data.encoder_command = 0x92;
 	for(uint8_t i=0;i<=8;i++){
 		if(i>=4){mitsubishi_encoder_data.encoder_command=0x7A;}
@@ -87,54 +87,53 @@ void mitsubishi_encoder_process_data(void){
 		if(mitsubishi_encoder_data.checksum_error_count>100){mitsubishi_encoder_data.encoder_state=encoder_error_no_communication;}
 	}*/
 	//else{ //calculate position and speed from received earlier data
-		if(mitsubishi_encoder_data.encoder_resolution==131072){
-			mitsubishi_encoder_data.last_encoder_position=mitsubishi_encoder_data.encoder_position;
-			if(mitsubishi_encoder_data.motor_response[0]==0xA2){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[2]>>3 | mitsubishi_encoder_data.motor_response[3]<<5 | mitsubishi_encoder_data.motor_response[4]<<13;}
-			if(mitsubishi_encoder_data.encoder_position>131073){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
-			int32_t speed = mitsubishi_encoder_data.last_encoder_position-mitsubishi_encoder_data.encoder_position;
-			if(((speed>5000) && (speed<125000))||
-					((speed<(-5000)) && (speed>(-125000)))){
-				mitsubishi_encoder_data.excessive_acceleration_error_count++;
-				if(mitsubishi_encoder_data.excessive_acceleration_error_count>5){mitsubishi_encoder_data.encoder_state=encoder_error_acceleration;}
-			}
+	if(mitsubishi_encoder_data.encoder_resolution==131072){
+		mitsubishi_encoder_data.last_encoder_position=mitsubishi_encoder_data.encoder_position;
+		if(mitsubishi_encoder_data.motor_response[0]==0xA2){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[2]>>3 | mitsubishi_encoder_data.motor_response[3]<<5 | mitsubishi_encoder_data.motor_response[4]<<13;}
+		if(mitsubishi_encoder_data.encoder_position>131073){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
+		int32_t speed = mitsubishi_encoder_data.last_encoder_position-mitsubishi_encoder_data.encoder_position;
+		if(((speed>5000) && (speed<125000))||
+				((speed<(-5000)) && (speed>(-125000)))){
+			mitsubishi_encoder_data.excessive_acceleration_error_count++;
+			if(mitsubishi_encoder_data.excessive_acceleration_error_count>5){mitsubishi_encoder_data.encoder_state=encoder_error_acceleration;}
 		}
-		if(mitsubishi_encoder_data.encoder_resolution==8192){
-			mitsubishi_encoder_data.last_encoder_position=mitsubishi_encoder_data.encoder_position;
-			if(mitsubishi_encoder_data.motor_response[0]==0x1A){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[2] | mitsubishi_encoder_data.motor_response[3]<<8;}
-			if(mitsubishi_encoder_data.encoder_position>8193){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
-			int32_t speed = mitsubishi_encoder_data.last_encoder_position-mitsubishi_encoder_data.encoder_position;
-			if(((speed>100) && (speed<8000))||
-					((speed<(-100)) && (speed>(-8000)))){
-				mitsubishi_encoder_data.excessive_acceleration_error_count++;
-				if(mitsubishi_encoder_data.excessive_acceleration_error_count>5){mitsubishi_encoder_data.encoder_state=encoder_error_acceleration;}
-			}
+	}
+	if(mitsubishi_encoder_data.encoder_resolution==8192){
+		mitsubishi_encoder_data.last_encoder_position=mitsubishi_encoder_data.encoder_position;
+		if(mitsubishi_encoder_data.motor_response[0]==0x1A){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[2] | mitsubishi_encoder_data.motor_response[3]<<8;}
+		if(mitsubishi_encoder_data.encoder_position>8193){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
+		int32_t speed = mitsubishi_encoder_data.last_encoder_position-mitsubishi_encoder_data.encoder_position;
+		if(((speed>100) && (speed<8000))||
+				((speed<(-100)) && (speed>(-8000)))){
+			mitsubishi_encoder_data.excessive_acceleration_error_count++;
+			if(mitsubishi_encoder_data.excessive_acceleration_error_count>5){mitsubishi_encoder_data.encoder_state=encoder_error_acceleration;}
 		}
+	}
 
-		inverter.encoder_raw_position=mitsubishi_encoder_data.encoder_position>>1;//divide by 2 to fit into uint16
-		if(mitsubishi_encoder_data.encoder_resolution==8192){
-			inverter.rotor_electric_angle=(((fmodf(mitsubishi_encoder_data.encoder_position, 8192.0f/(float)parameter_set.motor_pole_pairs))/(8192.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
-			if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
-			if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
-		}
-		if(mitsubishi_encoder_data.encoder_resolution==131072){
-			inverter.rotor_electric_angle=(((fmodf(mitsubishi_encoder_data.encoder_position,131072.0f/(float)parameter_set.motor_pole_pairs))/(131072.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
-			if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
-			if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
-		}
-		//}
+	inverter.encoder_raw_position=mitsubishi_encoder_data.encoder_position>>1;//divide by 2 to fit into uint16
+	if(mitsubishi_encoder_data.encoder_resolution==8192){
+		inverter.rotor_electric_angle=(((fmodf(mitsubishi_encoder_data.encoder_position, 8192.0f/(float)parameter_set.motor_pole_pairs))/(8192.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
+		if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
+		if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
+	}
+	if(mitsubishi_encoder_data.encoder_resolution==131072){
+		inverter.rotor_electric_angle=(((fmodf(mitsubishi_encoder_data.encoder_position,131072.0f/(float)parameter_set.motor_pole_pairs))/(131072.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
+		if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
+		if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
+	}
+	//}
 
 
 }
 
 void mitsubishi_encoder_send_command(void){
-	while(HAL_UART_Receive_DMA(&huart1, mitsubishi_encoder_data.motor_response, 9)!=HAL_OK){
-		HAL_UART_AbortReceive(&huart1);
+	if(HAL_UART_Receive_DMA(&huart1, mitsubishi_encoder_data.motor_response, 9)!=HAL_OK){
 		mitsubishi_encoder_data.communication_error_count++;
-		if(mitsubishi_encoder_data.communication_error_count>5){mitsubishi_encoder_data.encoder_state=encoder_error_no_communication;memset(&mitsubishi_encoder_data,0,sizeof(mitsubishi_encoder_data_t));inverter_error_trip(encoder_error_communication);break;}
+		if(mitsubishi_encoder_data.communication_error_count>5){mitsubishi_encoder_data.encoder_state=encoder_error_no_communication;memset(&mitsubishi_encoder_data,0,sizeof(mitsubishi_encoder_data_t));inverter_error_trip(encoder_error_communication);}
 	}
 	if(mitsubishi_encoder_data.communication_error_count<5){
 		mitsubishi_encoder_data.communication_error_count=0;
 	}
-	//HAL_UART_Transmit_DMA(&huart2, &command, 1); THIS IS TOO SLOW for j2s encoders in half-duplex
+	//HAL_UART_Transmit_DMA() IS TOO SLOW for j2s encoders in half-duplex to lift down DE pin before encoder response
 	if(USART_fast_transmit_RS485(&huart1, mitsubishi_encoder_data.encoder_command)){inverter_error_trip(internal_software);}
 }
