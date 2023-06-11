@@ -17,10 +17,12 @@
 #define _PI 3.141592f
 #define _PI_3 1.0472f
 #define _SQRT3 1.73205f
+#define _SQRT2 1.414213f
 
 #include "pid.h"
 #include "parameter_set.h"
 #include "mitsubishi_encoder.h"
+#include "abz_encoder.h"
 
 //list of possible inverter errors that need to inhibit output and trip the inverter
 typedef enum {no_error,

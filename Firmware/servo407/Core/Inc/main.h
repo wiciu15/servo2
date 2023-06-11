@@ -90,6 +90,7 @@ void Error_Handler(void);
 #define SOFTSTART_GPIO_Port GPIOC
 #define ENC_SHORT_Pin GPIO_PIN_5
 #define ENC_SHORT_GPIO_Port GPIOC
+#define ENC_SHORT_EXTI_IRQn EXTI9_5_IRQn
 #define ADC_CLK_Pin GPIO_PIN_10
 #define ADC_CLK_GPIO_Port GPIOB
 #define ADC_CS_Pin GPIO_PIN_11
@@ -116,6 +117,7 @@ void Error_Handler(void);
 #define ENC_B_GPIO_Port GPIOC
 #define ENC_Z_Pin GPIO_PIN_8
 #define ENC_Z_GPIO_Port GPIOC
+#define ENC_Z_EXTI_IRQn EXTI9_5_IRQn
 #define ENC_ENABLE_Pin GPIO_PIN_9
 #define ENC_ENABLE_GPIO_Port GPIOC
 #define ENCODER_DE_Pin GPIO_PIN_8

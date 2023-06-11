@@ -50,23 +50,24 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 16: response = (int16_t)(inverter.I_q_filtered*100.0f);break;
 	case 17: response = inverter.encoder_raw_position;break;
 	case 18: response = inverter.output_voltage*10.0f;break;
-	case 19: response = inverter.IGBT_temp;break;
+	case 19: response = (int16_t)(inverter.IGBT_temp*10.0f);break;
 
 	case 20: response = parameter_set.motor_feedback_type;break;
 	case 21: response = (int16_t)(parameter_set.encoder_electric_angle_correction*(180.0f/_PI));break;
 	case 22: response = parameter_set.encoder_resolution;break;
 	//case 23: if(parameter_set.motor_feedback_type==mitsubishi_encoder){response = mitsubishi_encoder_data.excessive_acceleration_error_count;}if(parameter_set.motor_feedback_type==tamagawa_encoder){response = tamagawa_encoder_data.excessive_acceleration_error_count;}break;
 	case 31: response = parameter_set.motor_pole_pairs;break;
-	case 32: response = parameter_set.motor_nominal_current*100.0f;break;
+	case 32: response = (parameter_set.motor_nominal_current/_SQRT2)*100.0f;break;
 	case 33: response = (parameter_set.motor_max_current/parameter_set.motor_nominal_current)*100.0f;break;
-	case 34: response = parameter_set.motor_max_current*100.0f;break;
-	case 35: response = parameter_set.motor_max_voltage;break;
+	case 34: response = (parameter_set.motor_max_current/_SQRT2)*100.0f;break;
+	case 35: response = (parameter_set.motor_max_voltage/_SQRT2);break;
 	case 36: response = parameter_set.motor_nominal_torque*100.0f;break;
 	case 37: response = parameter_set.motor_nominal_speed;break;
 	case 38: response = parameter_set.motor_max_speed;break;
 	case 39: response = parameter_set.motor_rs*1000.0f;break;
 	case 40: response = parameter_set.motor_ls*1000000.0f;break;
 	case 41: response = parameter_set.motor_K*100000.0f;break;
+	case 42: response = (parameter_set.motor_base_frequency/(_2_PI/MOTOR_CTRL_LOOP_FREQ))*100;break;
 	case 50: response = parameter_set.torque_current_ctrl_proportional_gain*10.0f;break;
 	case 51: response = parameter_set.torque_current_ctrl_integral_gain;break;
 	case 52: response = parameter_set.field_current_ctrl_proportional_gain*10.0f;break;
@@ -178,7 +179,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	{
 		uint16_t received_value = value;
 		if(received_value>=1 && received_value<=1600){
-			parameter_set.motor_nominal_current=received_value/100.0f;
+			parameter_set.motor_nominal_current=(received_value/100.0f)*_SQRT2;
 		}
 		break;}
 	//Motor overload factor
@@ -193,8 +194,8 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	case 35:
 	{
 		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=400){
-			parameter_set.motor_max_voltage=(float)received_value;
+		if(received_value>=1 && received_value<=500){
+			parameter_set.motor_max_voltage=((float)received_value)*_SQRT2;
 		}
 		break;}
 	//Motor nominal torque
@@ -243,6 +244,14 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 		uint16_t received_value = value;
 		if(received_value>=1 && received_value<=60000){
 			parameter_set.motor_K=(float)received_value/100000.0f;
+		}
+		break;}
+	//motor base frequency for u/f control
+	case 42:
+	{
+		uint16_t received_value = value;
+		if(received_value>=1 && received_value<=60000){
+			parameter_set.motor_base_frequency=((float)received_value/100.0f)*(_2_PI/MOTOR_CTRL_LOOP_FREQ);
 		}
 		break;}
 	case 50:

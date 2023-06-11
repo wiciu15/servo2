@@ -14,6 +14,7 @@
 #include "cmsis_os.h"
 
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim5;
 extern ADC_HandleTypeDef hadc2;
 extern SPI_HandleTypeDef hspi2;
@@ -22,18 +23,18 @@ extern SPI_HandleTypeDef hspi2;
 parameter_set_t parameter_set={
 		.motor_max_current=9.0f, //14.3 according to datasheet
 		.motor_nominal_current=5.0f,
-		.motor_pole_pairs=4, //4 for abb motor 5 for bch and mitsubishi hf-kn43
+		.motor_pole_pairs=5, //4 for abb motor 5 for bch and mitsubishi hf-kn43
 		.motor_max_voltage=170.0f,
 		.motor_max_torque=7.17f,
 		.motor_nominal_torque=2.39f,
 		.motor_nominal_speed=3000.0f,
 		.motor_base_frequency=200*(_2_PI/MOTOR_CTRL_LOOP_FREQ),
-		.motor_max_speed=500.0f,
+		.motor_max_speed=2000.0f,
 		.motor_rs=0.25f,
 		.motor_ls=0.002f, //winding inductance in H
 		.motor_K=0.18f,  //electical constant in V/(rad/s*pole_pairs) 1000RPM=104.719rad/s
-		.motor_feedback_type=mitsubishi_encoder,
-		.encoder_electric_angle_correction=-1.570796f, //-90 for abb BSM, 0 for bch, 0 for abb esm18, 60 for hf-kn43
+		.motor_feedback_type=abz_encoder,
+		.encoder_electric_angle_correction=0.0f, //-90 for abb BSM, 0 for bch, 0 for abb esm18, 60 for hf-kn43
 		.encoder_resolution=5000,
 
 
@@ -146,9 +147,10 @@ void inverter_setup(void){
 	HAL_ADC_Start_DMA(&hadc2, inverter.output_current_adc_buffer, 10);//start current reading
 	if(parameter_set.motor_feedback_type!=no_feedback){
 		HAL_GPIO_WritePin(ENC_ENABLE_GPIO_Port, ENC_ENABLE_Pin, 1);
-		osDelay(30);
+		osDelay(300);
 	}
 	if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
+	HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL); //enable abz encoder inputs
 	HAL_TIM_Base_Start_IT(&htim5);
 	HOT_ADC_read(); //start igbt temp and dc link reading
 }
@@ -481,10 +483,9 @@ void motor_control_loop(void){
 	clarke_transform(inverter.I_U, inverter.I_V, &inverter.I_alpha, &inverter.I_beta);
 
 
-	//calculate/get rotor electric angle
-	if(parameter_set.motor_feedback_type==mitsubishi_encoder){
-		mitsubishi_encoder_process_data();
-	}
+	//calculate/get rotor electric angle from encoder
+	if(parameter_set.motor_feedback_type==abz_encoder){abz_encoder_calculate_abs_position();}
+	if(parameter_set.motor_feedback_type==mitsubishi_encoder){mitsubishi_encoder_process_data();}
 
 	//calculate torque angle
 	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}
