@@ -78,7 +78,20 @@ const osThreadAttr_t defaultTask_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for taskModbusUSB */
+osThreadId_t taskModbusUSBHandle;
+const osThreadAttr_t taskModbusUSB_attributes = {
+  .name = "taskModbusUSB",
+  .stack_size = 600 * 4,
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for timerSoftstart */
+osTimerId_t timerSoftstartHandle;
+const osTimerAttr_t timerSoftstart_attributes = {
+  .name = "timerSoftstart"
+};
 /* USER CODE BEGIN PV */
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -101,6 +114,8 @@ static void MX_SPI3_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM5_Init(void);
 void StartDefaultTask(void *argument);
+void StartTaskModbusUSB(void *argument);
+void timerSoftstartCallback(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -171,6 +186,10 @@ int main(void)
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
+  /* Create the timer(s) */
+  /* creation of timerSoftstart */
+  timerSoftstartHandle = osTimerNew(timerSoftstartCallback, osTimerOnce, NULL, &timerSoftstart_attributes);
+
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
@@ -182,6 +201,9 @@ int main(void)
   /* Create the thread(s) */
   /* creation of defaultTask */
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
+
+  /* creation of taskModbusUSB */
+  taskModbusUSBHandle = osThreadNew(StartTaskModbusUSB, NULL, &taskModbusUSB_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -1150,7 +1172,6 @@ void StartDefaultTask(void *argument)
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
-	Modbus_init();
 	HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin,0);
 	HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
 	inverter_setup();
@@ -1159,12 +1180,42 @@ void StartDefaultTask(void *argument)
 
 	for(;;)
 	{
-		osDelay(1);
 		DCBus_voltage_check();
-		process_modbus_command();
-
+		osDelay(1);
 	}
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_StartTaskModbusUSB */
+/**
+* @brief Function implementing the taskModbusUSB thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_StartTaskModbusUSB */
+void StartTaskModbusUSB(void *argument)
+{
+  /* USER CODE BEGIN StartTaskModbusUSB */
+	Modbus_init(&modbusUSBinstance);
+  /* Infinite loop */
+  for(;;)
+  {
+	process_modbus_command(&modbusUSBinstance);
+    osDelay(1);
+  }
+  /* USER CODE END StartTaskModbusUSB */
+}
+
+/* timerSoftstartCallback function */
+void timerSoftstartCallback(void *argument)
+{
+  /* USER CODE BEGIN timerSoftstartCallback */
+	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&&(inverter.error==undervoltage_condition||inverter.error==no_error)){
+		inverter.error=0;
+		if(inverter.state==inhibit){inverter.state=stop;}
+		HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);
+	}
+  /* USER CODE END timerSoftstartCallback */
 }
 
 /**

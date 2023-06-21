@@ -19,6 +19,8 @@ extern TIM_HandleTypeDef htim5;
 extern ADC_HandleTypeDef hadc2;
 extern SPI_HandleTypeDef hspi2;
 
+extern osTimerId_t timerSoftstartHandle;
+
 //DEFAULT PARAMETER SET FROM DRIVE ROM, values would reset between restarts, @TODO: read and write parameter set from flash on boot
 parameter_set_t parameter_set={
 		.motor_max_current=9.0f, //14.3 according to datasheet
@@ -228,6 +230,7 @@ void HOT_ADC_RX_Cplt(){
 	uint16_t ADC_reading=inverter.HOT_ADC.HOT_ADC_rx_buffer[1]+((inverter.HOT_ADC.HOT_ADC_rx_buffer[0]&0b00000111)<<8);
 	if(inverter.HOT_ADC.measurement_loop_iteration%2==0){
 		inverter.HOT_ADC.DCVolt_sum+=ADC_reading;
+		inverter.RAW_DCBUS=ADC_reading;
 	}else{
 		inverter.HOT_ADC.IGBTtemp_sum+=ADC_reading;
 	}
@@ -243,16 +246,13 @@ void HOT_ADC_RX_Cplt(){
 }
 
 void HOT_ADC_calculate_avg(){
-	inverter.DCbus_voltage=(inverter.HOT_ADC.DCVolt_sum/(inverter.HOT_ADC.measurement_loop_iteration/2))*inverter.DCbus_volts_for_sample;
-	if(inverter.DCbus_voltage>inverter.overvoltage_limit){
-		inverter_error_trip(overvoltage);
-	}
+	float avg_dcbus=(inverter.HOT_ADC.DCVolt_sum/(inverter.HOT_ADC.measurement_loop_iteration/2))*inverter.DCbus_volts_for_sample;
+	//@TODO: there is an interference which causes noise on hot ADC readings each 700ms, filter is not an elegant solution, proper fix in hardware needed
+	inverter.DCbus_voltage=LowPassFilterA(0.02,0.001, avg_dcbus, &inverter.DCbus_voltage);
 	float U_thermistor=((inverter.HOT_ADC.IGBTtemp_sum/(inverter.HOT_ADC.measurement_loop_iteration/2))/1024.0f)*5.0f;
 	float R_thermistor=22000*(1.0f/((5.0f/(U_thermistor))-1.0f));
-	inverter.IGBT_temp=(1.0f/((logf(R_thermistor/85000.0f)/(4092.0f))+(1.0f/298.15f)))-273.15f;
-	if(inverter.IGBT_temp>inverter.igbt_overtemperature_limit){
-		inverter_error_trip(inverter_overtemperature);
-	}
+	float temp_reading=(1.0f/((logf(R_thermistor/85000.0f)/(4092.0f))+(1.0f/298.15f)))-273.15f;
+	inverter.IGBT_temp=LowPassFilterA(0.2, 0.001, temp_reading, &inverter.IGBT_temp);
 	inverter.HOT_ADC.measurement_loop_iteration=0;
 	inverter.HOT_ADC.DCVolt_sum=0;
 	inverter.HOT_ADC.IGBTtemp_sum=0;
@@ -276,6 +276,14 @@ void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float
 //Tf - filter time constant in seconds
 float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_value){
 	float alpha = Tf/(Tf + 0.000125f); //0.000125 = 1/8kHz - pwm interrupt frequency and sampling
+	float filtered_value = (alpha*(*last_filtered_value)) + ((1.0f - alpha)*actual_measurement);
+	*last_filtered_value = filtered_value;
+	return filtered_value;
+}
+
+//Tf - filter time constant in seconds, Ts - sampling interval
+float LowPassFilterA(float Tf,float Ts,float actual_measurement, float * last_filtered_value){
+	float alpha = Tf/(Tf + Ts);
 	float filtered_value = (alpha*(*last_filtered_value)) + ((1.0f - alpha)*actual_measurement);
 	*last_filtered_value = filtered_value;
 	return filtered_value;
@@ -441,14 +449,10 @@ void motor_control_loop_slow(void){
   * @retval null
   */
 void DCBus_voltage_check(void){
-	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&&(inverter.error==undervoltage_condition||inverter.error==no_error)){
-		inverter.error=0;
-		if(inverter.state==inhibit){inverter.state=stop;}
-		HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);
+	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&&(inverter.error==undervoltage_condition||inverter.error==no_error)&& !osTimerIsRunning(timerSoftstartHandle)){
+		//start timer to delay softstart relay and inverter readyness
+		int status=osTimerStart(timerSoftstartHandle, 1000);
 	}
-	if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){	inverter_error_trip(undervoltage); HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);} //@TODO:disable sofstart after a timer
-	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (inverter.state==stop || inverter.state==trip)){inverter_error_trip(undervoltage_condition);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);}
-
 }
 
 /**
@@ -477,7 +481,13 @@ void motor_control_loop(void){
 	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current*0.9f;
 	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current*0.9f;
 
+	//check if DC bus volatge is appropriate
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){	inverter_error_trip(undervoltage); HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);} //@TODO:disable sofstart after a timer
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (inverter.state==stop || inverter.state==trip)){inverter_error_trip(undervoltage_condition);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);}
+	if(inverter.DCbus_voltage>inverter.overvoltage_limit){inverter_error_trip(overvoltage);	}
 
+	//check IGBT temperature
+	if(inverter.IGBT_temp>inverter.igbt_overtemperature_limit){inverter_error_trip(inverter_overtemperature);}
 	//run RMS current calculation loop
 	RMS_current_calculation_loop();
 	clarke_transform(inverter.I_U, inverter.I_V, &inverter.I_alpha, &inverter.I_beta);

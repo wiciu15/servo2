@@ -76,6 +76,7 @@ float torque_angle;
 float output_voltage;
 float stator_field_speed;
 float DCbus_voltage;
+uint16_t RAW_DCBUS;
 float IGBT_temp;
 uint16_t zerocurrent_ADC_samples_U; //number of ADC samples when output is off and current is 0
 uint16_t zerocurrent_ADC_samples_V; //number of ADC samples when output is off and current is 0
@@ -128,6 +129,7 @@ void clarke_transform(float I_U,float I_V,float * I_alpha,float * I_beta);
 void park_transform(float I_alpha,float I_beta,float angle,float * I_d,float * I_q);
 void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float * U_beta);
 float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_value);
+float LowPassFilterA(float Tf,float Ts,float actual_measurement, float * last_filtered_value);
 
 void output_sine_pwm(output_voltage_vector_t voltage_vector);
 void output_svpwm(output_voltage_vector_t voltage_vector);

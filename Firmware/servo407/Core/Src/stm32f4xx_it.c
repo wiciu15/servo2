@@ -216,12 +216,12 @@ void DMA1_Stream4_IRQHandler(void)
   */
 void EXTI9_5_IRQHandler(void)
 {
-	/* USER CODE BEGIN EXTI9_5_IRQn 0 */
+  /* USER CODE BEGIN EXTI9_5_IRQn 0 */
 	if(HAL_GPIO_ReadPin(ENC_Z_GPIO_Port, ENC_Z_Pin)==1){
 		abz_encoder_update_counter_on_marker();
 	}
-	/* USER CODE END EXTI9_5_IRQn 0 */
-	HAL_GPIO_EXTI_IRQHandler(ENC_SHORT_Pin);
+  /* USER CODE END EXTI9_5_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(ENC_SHORT_Pin);
   HAL_GPIO_EXTI_IRQHandler(ENC_Z_Pin);
   /* USER CODE BEGIN EXTI9_5_IRQn 1 */
 
