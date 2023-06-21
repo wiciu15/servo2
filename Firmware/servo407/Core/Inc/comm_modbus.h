@@ -17,14 +17,16 @@ typedef struct _modbus_instance_t{
 	uint16_t fifo_read_pos;
 	uint8_t modbusReceiveBuffer[256];
 	uint8_t modbusSendBuffer[256];
+	mbus_t modbus;
+	Modbus_Conf_t mb_config;
 }modbus_instance_t;
 
-extern modbus_instance_t modbusUSBinstance;
+extern modbus_instance_t * ptrModbusUSBinstance;
 
 uint16_t modbus_protocol_read(uint32_t la);
 uint16_t modbus_protocol_write(uint32_t la, uint16_t value);
 int mbus_send(const mbus_t context,const uint8_t* data, const uint16_t size);
-void Modbus_init(modbus_instance_t *modbus_instance);
+void ModbusUSB_init(modbus_instance_t* mbus_instance);
 void modbus_process_new_data_to_fifo(modbus_instance_t* modbus_instance,uint8_t *buffer,uint32_t Size);
 void process_modbus_command(modbus_instance_t* modbus_instance);
 

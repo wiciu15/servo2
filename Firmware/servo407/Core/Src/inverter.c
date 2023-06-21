@@ -449,7 +449,7 @@ void motor_control_loop_slow(void){
   * @retval null
   */
 void DCBus_voltage_check(void){
-	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&&(inverter.error==undervoltage_condition||inverter.error==no_error)&& !osTimerIsRunning(timerSoftstartHandle)){
+	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&& !osTimerIsRunning(timerSoftstartHandle)){
 		//start timer to delay softstart relay and inverter readyness
 		int status=osTimerStart(timerSoftstartHandle, 1000);
 	}
@@ -482,7 +482,7 @@ void motor_control_loop(void){
 	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current*0.9f;
 
 	//check if DC bus volatge is appropriate
-	if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){	inverter_error_trip(undervoltage); HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);} //@TODO:disable sofstart after a timer
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){inverter_error_trip(undervoltage);} //@TODO:disable sofstart after a timer
 	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (inverter.state==stop || inverter.state==trip)){inverter_error_trip(undervoltage_condition);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);}
 	if(inverter.DCbus_voltage>inverter.overvoltage_limit){inverter_error_trip(overvoltage);	}
 

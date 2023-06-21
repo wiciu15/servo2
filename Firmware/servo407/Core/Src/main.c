@@ -85,10 +85,22 @@ const osThreadAttr_t taskModbusUSB_attributes = {
   .stack_size = 600 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
+/* Definitions for uiTask */
+osThreadId_t uiTaskHandle;
+const osThreadAttr_t uiTask_attributes = {
+  .name = "uiTask",
+  .stack_size = 128 * 4,
+  .priority = (osPriority_t) osPriorityBelowNormal,
+};
 /* Definitions for timerSoftstart */
 osTimerId_t timerSoftstartHandle;
 const osTimerAttr_t timerSoftstart_attributes = {
   .name = "timerSoftstart"
+};
+/* Definitions for LEDTimer */
+osTimerId_t LEDTimerHandle;
+const osTimerAttr_t LEDTimer_attributes = {
+  .name = "LEDTimer"
 };
 /* USER CODE BEGIN PV */
 
@@ -115,7 +127,9 @@ static void MX_TIM2_Init(void);
 static void MX_TIM5_Init(void);
 void StartDefaultTask(void *argument);
 void StartTaskModbusUSB(void *argument);
+void uiTaskStart(void *argument);
 void timerSoftstartCallback(void *argument);
+void LEDTimerCallback(void *argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -190,6 +204,9 @@ int main(void)
   /* creation of timerSoftstart */
   timerSoftstartHandle = osTimerNew(timerSoftstartCallback, osTimerOnce, NULL, &timerSoftstart_attributes);
 
+  /* creation of LEDTimer */
+  LEDTimerHandle = osTimerNew(LEDTimerCallback, osTimerPeriodic, NULL, &LEDTimer_attributes);
+
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
@@ -204,6 +221,9 @@ int main(void)
 
   /* creation of taskModbusUSB */
   taskModbusUSBHandle = osThreadNew(StartTaskModbusUSB, NULL, &taskModbusUSB_attributes);
+
+  /* creation of uiTask */
+  uiTaskHandle = osThreadNew(uiTaskStart, NULL, &uiTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -1196,26 +1216,77 @@ void StartDefaultTask(void *argument)
 void StartTaskModbusUSB(void *argument)
 {
   /* USER CODE BEGIN StartTaskModbusUSB */
-	Modbus_init(&modbusUSBinstance);
+	//
+	ptrModbusUSBinstance=calloc(1,sizeof(modbus_instance_t));
+
+	ModbusUSB_init(ptrModbusUSBinstance);
   /* Infinite loop */
   for(;;)
   {
-	process_modbus_command(&modbusUSBinstance);
+	process_modbus_command(ptrModbusUSBinstance);
     osDelay(1);
   }
   /* USER CODE END StartTaskModbusUSB */
+}
+
+/* USER CODE BEGIN Header_uiTaskStart */
+/**
+* @brief Function implementing the uiTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_uiTaskStart */
+void uiTaskStart(void *argument)
+{
+  /* USER CODE BEGIN uiTaskStart */
+	osTimerStart(LEDTimerHandle, 100);
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END uiTaskStart */
 }
 
 /* timerSoftstartCallback function */
 void timerSoftstartCallback(void *argument)
 {
   /* USER CODE BEGIN timerSoftstartCallback */
-	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&&(inverter.error==undervoltage_condition||inverter.error==no_error)){
-		inverter.error=0;
+	if(inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f){
+		if(inverter.error<=undervoltage_condition){inverter.error=0;}
 		if(inverter.state==inhibit){inverter.state=stop;}
 		HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);
 	}
   /* USER CODE END timerSoftstartCallback */
+}
+
+/* LEDTimerCallback function */
+void LEDTimerCallback(void *argument)
+{
+	/* USER CODE BEGIN LEDTimerCallback */
+	switch(inverter.state){
+	case run: //status on error off
+		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,1);
+		HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
+		break;
+	case stop: //status blink error off
+		HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
+		HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
+		break;
+	case inhibit: //status off error blink
+		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
+		HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
+		break;
+	case trip: //status off error on
+		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
+		HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 1);
+		break;
+	default: //both on
+		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
+		HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 1);
+		break;
+	}
+  /* USER CODE END LEDTimerCallback */
 }
 
 /**

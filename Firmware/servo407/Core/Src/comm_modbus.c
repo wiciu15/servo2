@@ -11,16 +11,8 @@
 #include <string.h>
 #include "inverter.h"
 #include "usbd_cdc_if.h"
-//#include "mitsubishi_encoder.h"
-//#include "tamagawa_encoder.h"
 
-mbus_t modbus;
-Modbus_Conf_t mb_config;
-
-modbus_instance_t modbusUSBinstance={0};
-
-extern UART_HandleTypeDef huart1;
-extern DMA_HandleTypeDef hdma_usart1_rx;
+modbus_instance_t * ptrModbusUSBinstance;
 
 uint16_t modbus_protocol_read(uint32_t la){
 
@@ -322,28 +314,28 @@ int mbus_send(const mbus_t context,const uint8_t* data, const uint16_t size){
 	}else{return MBUS_ERROR;}
 }
 
-void Modbus_init(modbus_instance_t* mbus_instance){
+void ModbusUSB_init(modbus_instance_t* mbus_instance){
 	/* Device slave address */
-	mb_config.devaddr = 0x01;
+	mbus_instance->mb_config.devaddr = 0x01;
 
 	/* Just ptr on any external object, you can get it by context */
-	mb_config.device = (void*) 0;
+	mbus_instance->mb_config.device = (void*) 0;
 
 	uint8_t * pmodbusSendBuffer;
 	pmodbusSendBuffer=mbus_instance->modbusSendBuffer;
-	mb_config.sendbuf = pmodbusSendBuffer;
-	mb_config.sendbuf_sz = sizeof(mbus_instance->modbusSendBuffer);
+	mbus_instance->mb_config.sendbuf = pmodbusSendBuffer;
+	mbus_instance->mb_config.sendbuf_sz = sizeof(mbus_instance->modbusSendBuffer);
 
 	uint8_t * pmodbusRecvBuffer;
 	pmodbusRecvBuffer=mbus_instance->modbusReceiveBuffer;
-	mb_config.recvbuf = pmodbusRecvBuffer;
-	mb_config.recvbuf_sz = sizeof(mbus_instance->modbusReceiveBuffer);
+	mbus_instance->mb_config.recvbuf = pmodbusRecvBuffer;
+	mbus_instance->mb_config.recvbuf_sz = sizeof(mbus_instance->modbusReceiveBuffer);
 
 	/* This that function for sending some data (use sendbuf for buf) */
-	mb_config.send = &mbus_send;
+	mbus_instance->mb_config.send = &mbus_send;
 
 	Modbus_Conf_t * pconf;
-	pconf=&mb_config;
+	pconf=&mbus_instance->mb_config;
 	//User Read callback function ( read by logical address)
 	pconf->read = modbus_protocol_read;
 
@@ -351,13 +343,13 @@ void Modbus_init(modbus_instance_t* mbus_instance){
 	pconf->write = modbus_protocol_write;
 
 	//Open modbus contex
-	modbus = mbus_open(pconf);
+	mbus_instance->modbus = mbus_open(pconf);
 
 	//HAL_UARTEx_ReceiveToIdle_DMA(&huart1, UART_RX_buf, sizeof(UART_RX_buf));
 }
 
 void modbus_process_new_data_to_fifo(modbus_instance_t* mbus_instance, uint8_t * buffer,uint32_t Size){
-		mbus_flush(modbus);
+		mbus_flush(mbus_instance->modbus);
 		/* start the DMA again */
 		//HAL_UARTEx_ReceiveToIdle_DMA(&huart1, (uint8_t *) UART_RX_buf, sizeof(UART_RX_buf));
 		//__HAL_DMA_DISABLE_IT(&hdma_usart1_rx, DMA_IT_HT);
@@ -394,7 +386,7 @@ void modbus_process_new_data_to_fifo(modbus_instance_t* mbus_instance, uint8_t *
 
 void process_modbus_command(modbus_instance_t* mbus_instance){
 	while(mbus_instance->fifo_read_pos!=mbus_instance->fifo_newpos){
-		mbus_poll(modbus, mbus_instance->RX_FIFO[mbus_instance->fifo_read_pos] );
+		mbus_poll(mbus_instance->modbus, mbus_instance->RX_FIFO[mbus_instance->fifo_read_pos] );
 		mbus_instance->fifo_read_pos++;
 		if(mbus_instance->fifo_read_pos>=sizeof(mbus_instance->RX_FIFO)){
 			mbus_instance->fifo_read_pos=0;
