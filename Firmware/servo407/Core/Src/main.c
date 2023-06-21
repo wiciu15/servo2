@@ -26,9 +26,11 @@
 #include "inverter.h"
 #include <math.h>
 #include "comm_modbus.h"
+#include "user_interface.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
+typedef StaticTimer_t osStaticTimerDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -76,7 +78,7 @@ osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
   .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
+  .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for taskModbusUSB */
 osThreadId_t taskModbusUSBHandle;
@@ -94,13 +96,19 @@ const osThreadAttr_t uiTask_attributes = {
 };
 /* Definitions for timerSoftstart */
 osTimerId_t timerSoftstartHandle;
+osStaticTimerDef_t timerSoftstartControlBlock;
 const osTimerAttr_t timerSoftstart_attributes = {
-  .name = "timerSoftstart"
+  .name = "timerSoftstart",
+  .cb_mem = &timerSoftstartControlBlock,
+  .cb_size = sizeof(timerSoftstartControlBlock),
 };
 /* Definitions for LEDTimer */
 osTimerId_t LEDTimerHandle;
+osStaticTimerDef_t LEDTimerControlBlock;
 const osTimerAttr_t LEDTimer_attributes = {
-  .name = "LEDTimer"
+  .name = "LEDTimer",
+  .cb_mem = &LEDTimerControlBlock,
+  .cb_size = sizeof(LEDTimerControlBlock),
 };
 /* USER CODE BEGIN PV */
 
@@ -556,7 +564,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_2;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -1052,7 +1060,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, SOFTSTART_Pin|ENC_ENABLE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, ADC_CS_Pin|OLED_CS_Pin|OLED_RESET_Pin|MODBUS_DE_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, ADC_CS_Pin|OLED_CS_Pin|OLED_RESET_Pin|MODBUS_DEB9_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, LED_STATUS_Pin|LED_ERROR_Pin|ETH_CS_Pin, GPIO_PIN_SET);
@@ -1061,7 +1069,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port, ENCODER_DE_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, ETH_RESET_Pin|GPIO_PIN_7, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(OLED_DC_GPIO_Port, OLED_DC_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, ETH_RESET_Pin|MODBUS_DE_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : DIN3_Pin DIN4_Pin DIN5_Pin DIN1_Pin
                            DIN2_Pin */
@@ -1097,8 +1108,8 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : ADC_CS_Pin OLED_CS_Pin OLED_RESET_Pin MODBUS_DE_Pin */
-  GPIO_InitStruct.Pin = ADC_CS_Pin|OLED_CS_Pin|OLED_RESET_Pin|MODBUS_DE_Pin;
+  /*Configure GPIO pins : ADC_CS_Pin OLED_CS_Pin OLED_RESET_Pin MODBUS_DEB9_Pin */
+  GPIO_InitStruct.Pin = ADC_CS_Pin|OLED_CS_Pin|OLED_RESET_Pin|MODBUS_DEB9_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -1111,20 +1122,20 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED_STATUS_Pin LED_ERROR_Pin ETH_RESET_Pin ETH_CS_Pin
-                           PD7 */
+                           MODBUS_DE_Pin */
   GPIO_InitStruct.Pin = LED_STATUS_Pin|LED_ERROR_Pin|ETH_RESET_Pin|ETH_CS_Pin
-                          |GPIO_PIN_7;
+                          |MODBUS_DE_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : ENCODER_DE_Pin */
-  GPIO_InitStruct.Pin = ENCODER_DE_Pin;
+  /*Configure GPIO pins : ENCODER_DE_Pin OLED_DC_Pin */
+  GPIO_InitStruct.Pin = ENCODER_DE_Pin|OLED_DC_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(ENCODER_DE_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ETH_INT_Pin */
   GPIO_InitStruct.Pin = ETH_INT_Pin;
@@ -1192,12 +1203,9 @@ void StartDefaultTask(void *argument)
   /* init code for USB_DEVICE */
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 5 */
-	HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin,0);
-	HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
 	inverter_setup();
 	osDelay(20);
 	/* Infinite loop */
-
 	for(;;)
 	{
 		DCBus_voltage_check();
@@ -1240,10 +1248,12 @@ void uiTaskStart(void *argument)
 {
   /* USER CODE BEGIN uiTaskStart */
 	osTimerStart(LEDTimerHandle, 100);
+	//test();
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	  //draw();
+	  osDelay(10);
   }
   /* USER CODE END uiTaskStart */
 }
@@ -1263,7 +1273,7 @@ void timerSoftstartCallback(void *argument)
 /* LEDTimerCallback function */
 void LEDTimerCallback(void *argument)
 {
-	/* USER CODE BEGIN LEDTimerCallback */
+  /* USER CODE BEGIN LEDTimerCallback */
 	switch(inverter.state){
 	case run: //status on error off
 		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,1);

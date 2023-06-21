@@ -451,7 +451,8 @@ void motor_control_loop_slow(void){
 void DCBus_voltage_check(void){
 	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&& !osTimerIsRunning(timerSoftstartHandle)){
 		//start timer to delay softstart relay and inverter readyness
-		int status=osTimerStart(timerSoftstartHandle, 1000);
+		osStatus_t status = osTimerStart(timerSoftstartHandle, 1000);
+		if(status!=0){inverter_error_trip(internal_software);}
 	}
 }
 

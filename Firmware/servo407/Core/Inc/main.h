@@ -126,6 +126,8 @@ void Error_Handler(void);
 #define ENCODER_TX_GPIO_Port GPIOA
 #define ENCODER_RX_Pin GPIO_PIN_10
 #define ENCODER_RX_GPIO_Port GPIOA
+#define OLED_DC_Pin GPIO_PIN_15
+#define OLED_DC_GPIO_Port GPIOA
 #define ETH_INT_Pin GPIO_PIN_2
 #define ETH_INT_GPIO_Port GPIOD
 #define ETH_RESET_Pin GPIO_PIN_3
@@ -136,6 +138,8 @@ void Error_Handler(void);
 #define MODBUS_TX_GPIO_Port GPIOD
 #define MODBUS_RX_Pin GPIO_PIN_6
 #define MODBUS_RX_GPIO_Port GPIOD
+#define MODBUS_DE_Pin GPIO_PIN_7
+#define MODBUS_DE_GPIO_Port GPIOD
 #define OLED_CLK_Pin GPIO_PIN_3
 #define OLED_CLK_GPIO_Port GPIOB
 #define OLED_CS_Pin GPIO_PIN_4
@@ -148,8 +152,8 @@ void Error_Handler(void);
 #define EEPROM_SDA_GPIO_Port GPIOB
 #define EEPROM_SCL_Pin GPIO_PIN_8
 #define EEPROM_SCL_GPIO_Port GPIOB
-#define MODBUS_DE_Pin GPIO_PIN_9
-#define MODBUS_DE_GPIO_Port GPIOB
+#define MODBUS_DEB9_Pin GPIO_PIN_9
+#define MODBUS_DEB9_GPIO_Port GPIOB
 #define DIN1_Pin GPIO_PIN_0
 #define DIN1_GPIO_Port GPIOE
 #define DIN2_Pin GPIO_PIN_1
