@@ -37,6 +37,7 @@ typedef StaticTimer_t osStaticTimerDef_t;
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -59,6 +60,7 @@ I2C_HandleTypeDef hi2c1;
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 SPI_HandleTypeDef hspi3;
+DMA_HandleTypeDef hdma_spi1_tx;
 DMA_HandleTypeDef hdma_spi2_tx;
 DMA_HandleTypeDef hdma_spi2_rx;
 
@@ -91,7 +93,7 @@ const osThreadAttr_t taskModbusUSB_attributes = {
 osThreadId_t uiTaskHandle;
 const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
-  .stack_size = 128 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for timerSoftstart */
@@ -234,7 +236,9 @@ int main(void)
   uiTaskHandle = osThreadNew(uiTaskStart, NULL, &uiTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+  osThreadSuspend(defaultTaskHandle);
+  osThreadSuspend(taskModbusUSBHandle);
+  /* adddefaultTaskHandle ... */
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
@@ -1025,6 +1029,9 @@ static void MX_DMA_Init(void)
   /* DMA2_Stream2_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream2_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream2_IRQn);
+  /* DMA2_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
   /* DMA2_Stream5_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream5_IRQn);
@@ -1182,7 +1189,11 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	}
 	//calculation takes 2us, aquisition of 5(10) samples takes 12,5us
 }
-
+void HAL_SPI_TxCpltCallback(SPI_HandleTypeDef * hspi){
+	if(hspi->Instance==SPI1){
+		HAL_GPIO_WritePin(OLED_CS_GPIO_Port, OLED_CS_Pin, 1);
+	}
+}
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi){
 	if(hspi->Instance==SPI2){
 		HOT_ADC_RX_Cplt();
@@ -1248,12 +1259,15 @@ void uiTaskStart(void *argument)
 {
   /* USER CODE BEGIN uiTaskStart */
 	osTimerStart(LEDTimerHandle, 100);
-	//test();
+	display_init();
+	osDelay(1700);
+	osThreadResume(taskModbusUSBHandle);//start usb communication task
+	osThreadResume(defaultTaskHandle); //start motor control
   /* Infinite loop */
   for(;;)
   {
-	  //draw();
-	  osDelay(10);
+	  draw();
+	  osDelay(200);
   }
   /* USER CODE END uiTaskStart */
 }
@@ -1262,7 +1276,7 @@ void uiTaskStart(void *argument)
 void timerSoftstartCallback(void *argument)
 {
   /* USER CODE BEGIN timerSoftstartCallback */
-	if(inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f){
+	if(inverter.DCbus_voltage>=inverter.undervoltage_limit+10.0f){
 		if(inverter.error<=undervoltage_condition){inverter.error=0;}
 		if(inverter.state==inhibit){inverter.state=stop;}
 		HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);

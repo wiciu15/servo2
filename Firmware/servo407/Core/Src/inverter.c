@@ -23,6 +23,7 @@ extern osTimerId_t timerSoftstartHandle;
 
 //DEFAULT PARAMETER SET FROM DRIVE ROM, values would reset between restarts, @TODO: read and write parameter set from flash on boot
 parameter_set_t parameter_set={
+		.software_version=SOFTWARE_VERSION,
 		.motor_max_current=9.0f, //14.3 according to datasheet
 		.motor_nominal_current=5.0f,
 		.motor_pole_pairs=5, //4 for abb motor 5 for bch and mitsubishi hf-kn43
@@ -55,7 +56,7 @@ parameter_set_t parameter_set={
 
 inverter_t inverter={
 		.error=no_error,
-		.state=stop,
+		.state=inhibit,
 		.control_mode=manual,
 		.duty_cycle_limit=10498, //max value you can write to timer compare register
 		.output_voltage_vector={
@@ -69,10 +70,12 @@ inverter_t inverter={
 		.last_rotor_speed=0.0f,
 		.filtered_rotor_speed=0.0f,
 		.torque_angle=0.0f,
-		.output_voltage=3.0f,
+		.output_voltage=0.0f,
+		.output_power_active=0.0f,
+		.output_power_apparent=0.0f,
 		.stator_field_speed=0.0f,
 		.DCbus_voltage=66.6f,
-		.IGBT_temp=0.0f,
+		.IGBT_temp=20.0f,
 		.zerocurrent_ADC_samples_U=0,
 		.zerocurrent_ADC_samples_V=0,
 		.output_current_adc_buffer={0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
@@ -84,7 +87,7 @@ inverter_t inverter={
 		},
 		.DCbus_volts_for_sample=0.421f,
 		.igbt_overtemperature_limit=65.0f,
-		.undervoltage_limit=10,
+		.undervoltage_limit=100,
 		.overvoltage_limit=380.0f,
 		.encoder_raw_position=0,
 		.speed_measurement_loop_i=0,
@@ -147,14 +150,14 @@ float U_sat=2.0f;
  */
 void inverter_setup(void){
 	HAL_ADC_Start_DMA(&hadc2, inverter.output_current_adc_buffer, 10);//start current reading
-	if(parameter_set.motor_feedback_type!=no_feedback){
+	if(parameter_set.motor_feedback_type!=no_feedback){ //enable encoder power supply
 		HAL_GPIO_WritePin(ENC_ENABLE_GPIO_Port, ENC_ENABLE_Pin, 1);
 		osDelay(300);
 	}
 	if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
-	HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL); //enable abz encoder inputs
-	HAL_TIM_Base_Start_IT(&htim5);
-	HOT_ADC_read(); //start igbt temp and dc link reading
+	if(parameter_set.motor_feedback_type == abz_encoder){HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);} //enable abz encoder inputs
+	HAL_TIM_Base_Start_IT(&htim5); //start main motor control loop
+
 }
 /**
   * @brief  Enable PWM output of the inverter
@@ -210,6 +213,9 @@ void inverter_disable(){
   */
 void inverter_error_trip(uint8_t error_number){
 	inverter_disable();
+	if(error_number==internal_software){
+
+	}
 	if(error_number==undervoltage_condition && inverter.error==no_error){inverter.state=inhibit;}else{inverter.state=trip;}
 	inverter.error|=1<<(error_number-1);
 }
@@ -248,11 +254,11 @@ void HOT_ADC_RX_Cplt(){
 void HOT_ADC_calculate_avg(){
 	float avg_dcbus=(inverter.HOT_ADC.DCVolt_sum/(inverter.HOT_ADC.measurement_loop_iteration/2))*inverter.DCbus_volts_for_sample;
 	//@TODO: there is an interference which causes noise on hot ADC readings each 700ms, filter is not an elegant solution, proper fix in hardware needed
-	inverter.DCbus_voltage=LowPassFilterA(0.02,0.001, avg_dcbus, &inverter.DCbus_voltage);
+	inverter.DCbus_voltage=LowPassFilterA(0.03,0.001, avg_dcbus, &inverter.DCbus_voltage);
 	float U_thermistor=((inverter.HOT_ADC.IGBTtemp_sum/(inverter.HOT_ADC.measurement_loop_iteration/2))/1024.0f)*5.0f;
 	float R_thermistor=22000*(1.0f/((5.0f/(U_thermistor))-1.0f));
 	float temp_reading=(1.0f/((logf(R_thermistor/85000.0f)/(4092.0f))+(1.0f/298.15f)))-273.15f;
-	inverter.IGBT_temp=LowPassFilterA(0.2, 0.001, temp_reading, &inverter.IGBT_temp);
+	inverter.IGBT_temp=LowPassFilterA(0.7, 0.001, temp_reading, &inverter.IGBT_temp);
 	inverter.HOT_ADC.measurement_loop_iteration=0;
 	inverter.HOT_ADC.DCVolt_sum=0;
 	inverter.HOT_ADC.IGBTtemp_sum=0;
@@ -449,10 +455,12 @@ void motor_control_loop_slow(void){
   * @retval null
   */
 void DCBus_voltage_check(void){
-	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+5.0f)&& !osTimerIsRunning(timerSoftstartHandle)){
+	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+10.0f)&& !osTimerIsRunning(timerSoftstartHandle)&&(inverter.state==inhibit || inverter.state==trip)){
 		//start timer to delay softstart relay and inverter readyness
 		osStatus_t status = osTimerStart(timerSoftstartHandle, 1000);
-		if(status!=0){inverter_error_trip(internal_software);}
+		if(status!=0){
+			inverter_error_trip(softstart_failure);
+		}
 	}
 }
 
@@ -482,17 +490,36 @@ void motor_control_loop(void){
 	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current*0.9f;
 	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current*0.9f;
 
+	//check if everything is fine with HOT ADC and reset it if not
+	if(HOT_ADC_read()!=HAL_OK){
+		inverter_error_trip(adc_no_communication);
+	}
+	if(hspi2.ErrorCode!=0){
+		inverter_error_trip(adc_no_communication);
+		HAL_SPI_DeInit(&hspi2);
+		HAL_SPI_Init(&hspi2);
+		HOT_ADC_read();
+	}
+	//check if softstart relay is energized, due to software timer failure it can be not energized while inverter is in ready state
+	if(!HAL_GPIO_ReadPin(SOFTSTART_GPIO_Port, SOFTSTART_Pin) && (inverter.state==run||inverter.state==stop)){
+		inverter_error_trip(softstart_failure);
+	}
+
 	//check if DC bus volatge is appropriate
-	if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){inverter_error_trip(undervoltage);} //@TODO:disable sofstart after a timer
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){inverter_error_trip(undervoltage);}
 	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (inverter.state==stop || inverter.state==trip)){inverter_error_trip(undervoltage_condition);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);}
 	if(inverter.DCbus_voltage>inverter.overvoltage_limit){inverter_error_trip(overvoltage);	}
 
 	//check IGBT temperature
 	if(inverter.IGBT_temp>inverter.igbt_overtemperature_limit){inverter_error_trip(inverter_overtemperature);}
+
 	//run RMS current calculation loop
 	RMS_current_calculation_loop();
+	//calculate current vector
 	clarke_transform(inverter.I_U, inverter.I_V, &inverter.I_alpha, &inverter.I_beta);
-
+	//these methods of calculating power are not very reliable or accurate
+	inverter.output_power_apparent=inverter.output_voltage*hypotf(inverter.I_alpha,inverter.I_beta);
+	inverter.output_power_active=inverter.output_voltage*inverter.I_q_filtered;
 
 	//calculate/get rotor electric angle from encoder
 	if(parameter_set.motor_feedback_type==abz_encoder){abz_encoder_calculate_abs_position();}
@@ -583,16 +610,8 @@ void motor_control_loop(void){
 		mitsubishi_encoder_send_command();
 	}
 
-	//check if everything is fine with HOT ADC and reset it with not
-	if(HOT_ADC_read()!=HAL_OK){
-		inverter_error_trip(adc_no_communication);
-	}
-	if(hspi2.ErrorCode!=0){
-		inverter_error_trip(adc_no_communication);
-		HAL_SPI_DeInit(&hspi2);
-		HAL_SPI_Init(&hspi2);
-		HOT_ADC_read();
-	}
+
+
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 }
 

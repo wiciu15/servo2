@@ -8,6 +8,8 @@
 #ifndef INC_INVERTER_H_
 #define INC_INVERTER_H_
 
+#define SOFTWARE_VERSION 201
+
 #define INVERTER_OVERCURRENT_TRIP_LEVEL 10.0f  //overcurrrent trip setting level in Amperes
 #define ADC_SAMPLES_PER_AMP 65.0f //number of ADC samples read for 1A of phase current
 #define CURRENT_RMS_SAMPLING_COUNT 500 //(2*pwm frequency)/this define=rms current sampling frequency, for 500 = 32 calculations per second
@@ -38,7 +40,8 @@ typedef enum {no_error,
 	overspeed,
 	adc_no_communication,
 	internal_software,
-	external_comm
+	external_comm,
+	softstart_failure
 }inverter_error_t;
 typedef enum {stop,run,inhibit,trip}inverter_state_t;
 typedef enum {manual,u_f,open_loop_current,foc}control_mode_t;
@@ -74,6 +77,8 @@ float last_rotor_speed;
 float filtered_rotor_speed;
 float torque_angle;
 float output_voltage;
+float output_power_active;
+float output_power_apparent;
 float stator_field_speed;
 float DCbus_voltage;
 uint16_t RAW_DCBUS;

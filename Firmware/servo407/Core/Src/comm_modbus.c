@@ -198,7 +198,6 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 			parameter_set.motor_nominal_speed=received_value;
 		}
 		break;}
-	//Motor max speed @TODO: implement speed limiter
 	case 38:
 	{
 		uint16_t received_value = value;

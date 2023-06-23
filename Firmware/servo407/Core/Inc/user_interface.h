@@ -11,7 +11,7 @@
 #include "ssd1306.h"
 #include "ssd1306_tests.h"
 
-void test(void);
+void display_init(void);
 void draw(void);
 
 
