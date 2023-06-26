@@ -21,9 +21,9 @@ HAL_StatusTypeDef USART_fast_transmit_RS485(UART_HandleTypeDef * huart, uint8_t 
 	uint32_t timeout_clock=0;
 	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 1);
 	huart->Instance->DR=byte_to_send;
-	while(!__HAL_UART_GET_FLAG(huart,UART_FLAG_TC)){timeout_clock++;if(timeout_clock>40){break;}} //break out of loop if transfer is not finished within <1us to prevent blocking the CPU in case of error
+	while(!__HAL_UART_GET_FLAG(huart,UART_FLAG_TC)){timeout_clock++;if(timeout_clock>60){break;}} //break out of loop if transfer is not finished within <1us to prevent blocking the CPU in case of error
 	ENCODER_DE_GPIO_Port->BSRR = (uint32_t)ENCODER_DE_Pin << 16U;
-	if(timeout_clock<30){return HAL_OK;}
+	if(timeout_clock<60){return HAL_OK;}
 	return HAL_ERROR;
 }
 
