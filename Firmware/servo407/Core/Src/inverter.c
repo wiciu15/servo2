@@ -87,7 +87,7 @@ inverter_t inverter={
 		},
 		.DCbus_volts_for_sample=0.421f,
 		.igbt_overtemperature_limit=65.0f,
-		.undervoltage_limit=100,
+		.undervoltage_limit=10,
 		.overvoltage_limit=380.0f,
 		.encoder_raw_position=0,
 		.speed_measurement_loop_i=0,
@@ -349,95 +349,91 @@ void output_sine_pwm(output_voltage_vector_t voltage_vector){
   */
 void output_svpwm(output_voltage_vector_t voltage_vector){
 	//get angle of voltage vector
-	float angle_el = atan2f(voltage_vector.U_Beta,voltage_vector.U_Alpha)+3.1415f;
+	float angle_el = atan2f(-voltage_vector.U_Beta,-voltage_vector.U_Alpha)+_PI+0.00001f;
 	//calculate lenght(voltage) in timer units
-	float voltage_vector_len=(hypotf(voltage_vector.U_Alpha,voltage_vector.U_Beta)/inverter.DCbus_voltage)*inverter.duty_cycle_limit/2.0f;
+	float voltage_vector_len=(inverter.output_voltage/inverter.DCbus_voltage)*inverter.duty_cycle_limit/2.0f;
 	//get sector of voltage
 	uint8_t sector = floor(angle_el / _PI_3) + 1;
-	      // calculate T1 and T2 times in timer units
-	      float T1 = _SQRT3*sinf(sector*_PI_3 - angle_el) * voltage_vector_len;
-	      float T2 = _SQRT3*sinf(angle_el - (sector-1.0f)*_PI_3) * voltage_vector_len;
-	      // idle time none or split in half to get centered PWM
-	      float T0 = 0; // pulled to 0 - better for low power supply voltage
-	      if (1) {
-	        T0 = inverter.duty_cycle_limit - T1 - T2; // modulation_centered around driver->voltage_limit/2
-	      }
+	// calculate T1 and T2 times in timer units
+	float T1 = _SQRT3*sinf(sector*_PI_3 - angle_el) * voltage_vector_len;
+	float T2 = _SQRT3*sinf(angle_el - (sector-1.0f)*_PI_3) * voltage_vector_len;
+	// idle time none or split in half to get centered PWM
+	float T0 = inverter.duty_cycle_limit - T1 - T2; // modulation_centered around driver->voltage_limit/2
+	// calculate the duty cycles of each PWM driver
 
-	      // calculate the duty cycles of each PWM driver
+	switch(sector){
+	case 1:
+		inverter.U_U = T1 + T2 + T0/2;
+		inverter.U_V = T2 + T0/2;
+		inverter.U_W = T0/2;
+		break;
+	case 2:
+		inverter.U_U = T1 +  T0/2;
+		inverter.U_V = T1 + T2 + T0/2;
+		inverter.U_W = T0/2;
+		break;
+	case 3:
+		inverter.U_U = T0/2;
+		inverter.U_V = T1 + T2 + T0/2;
+		inverter.U_W = T2 + T0/2;
+		break;
+	case 4:
+		inverter.U_U = T0/2;
+		inverter.U_V = T1+ T0/2;
+		inverter.U_W = T1 + T2 + T0/2;
+		break;
+	case 5:
+		inverter.U_U = T2 + T0/2;
+		inverter.U_V = T0/2;
+		inverter.U_W = T1 + T2 + T0/2;
+		break;
+	case 6:
+		inverter.U_U = T1 + T2 + T0/2;
+		inverter.U_V = T0/2;
+		inverter.U_W = T1 + T0/2;
+		break;
+	default:
+		// possible error state
+		inverter.U_U = 0;
+		inverter.U_V = 0;
+		inverter.U_W = 0;
+	}
+	//dead time and forward drop compensation
+	float offset=(U_sat/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f);
+	if(inverter.I_U>0.0f){inverter.U_U+=offset;}
+	if(inverter.I_U<0.0f){inverter.U_U-=offset;}
+	if(inverter.I_V>0.0f){inverter.U_V+=offset;}
+	if(inverter.I_V<0.0f){inverter.U_V-=offset;}
+	if(inverter.I_W>0.0f){inverter.U_W+=offset;}
+	if(inverter.I_W<0.0f){inverter.U_W-=offset;}
 
-	      switch(sector){
-	        case 1:
-	          inverter.U_U = T1 + T2 + T0/2;
-	          inverter.U_V = T2 + T0/2;
-	          inverter.U_W = T0/2;
-	          break;
-	        case 2:
-	        	inverter.U_U = T1 +  T0/2;
-	        	inverter.U_V = T1 + T2 + T0/2;
-	        	inverter.U_W = T0/2;
-	          break;
-	        case 3:
-	        	inverter.U_U = T0/2;
-	        	inverter.U_V = T1 + T2 + T0/2;
-	        	inverter.U_W = T2 + T0/2;
-	          break;
-	        case 4:
-	        	inverter.U_U = T0/2;
-	        	inverter.U_V = T1+ T0/2;
-	        	inverter.U_W = T1 + T2 + T0/2;
-	          break;
-	        case 5:
-	        	inverter.U_U = T2 + T0/2;
-	        	inverter.U_V = T0/2;
-	        	inverter.U_W = T1 + T2 + T0/2;
-	          break;
-	        case 6:
-	        	inverter.U_U = T1 + T2 + T0/2;
-	        	inverter.U_V = T0/2;
-	        	inverter.U_W = T1 + T0/2;
-	          break;
-	        default:
-	         // possible error state
-	        	inverter.U_U = 0;
-	        	inverter.U_V = 0;
-	        	inverter.U_W = 0;
-	      }
-	      //dead time and forward drop compensation
-	     /*float offset=(U_sat/inverter.DCbus_voltage)*inverter.duty_cycle_limit;
-	      if(inverter.I_U>=0.0f){inverter.U_U-=offset;}
-	      if(inverter.I_U<0.0f){inverter.U_U+=offset;}
-	      if(inverter.I_V>=0.0f){inverter.U_V-=offset;}
-	      if(inverter.I_V<0.0f){inverter.U_V+=offset;}
-	      if(inverter.I_W>=0.0f){inverter.U_W-=offset;}
-	      if(inverter.I_W<0.0f){inverter.U_W+=offset;}*/
-
-	      if(inverter.U_U>inverter.duty_cycle_limit){inverter.U_U=inverter.duty_cycle_limit;}
-	      if(inverter.U_V>inverter.duty_cycle_limit){inverter.U_V=inverter.duty_cycle_limit;}
-	      if(inverter.U_W>inverter.duty_cycle_limit){inverter.U_W=inverter.duty_cycle_limit;}
-	      if(inverter.U_U<0){inverter.U_U=0;}
-	      if(inverter.U_V<0){inverter.U_V=0;}
-	      if(inverter.U_W<0){inverter.U_W=0;}
+	if(inverter.U_U>inverter.duty_cycle_limit){inverter.U_U=inverter.duty_cycle_limit;}
+	if(inverter.U_V>inverter.duty_cycle_limit){inverter.U_V=inverter.duty_cycle_limit;}
+	if(inverter.U_W>inverter.duty_cycle_limit){inverter.U_W=inverter.duty_cycle_limit;}
+	if(inverter.U_U<0){inverter.U_U=0;}
+	if(inverter.U_V<0){inverter.U_V=0;}
+	if(inverter.U_W<0){inverter.U_W=0;}
 
 
 
-	      TIM1->CCR1=(uint16_t)inverter.U_U;
-	      TIM1->CCR2=(uint16_t)inverter.U_V;
-	      TIM1->CCR3=(uint16_t)inverter.U_W;
+	TIM1->CCR1=(uint16_t)inverter.U_U;
+	TIM1->CCR2=(uint16_t)inverter.U_V;
+	TIM1->CCR3=(uint16_t)inverter.U_W;
 }
 
 
 /**
-  * @brief  This function when ran in loop will integrate 3 phase currents to get average RMS value
-  * @param  null
-  * @retval null
-  */
+ * @brief  This function when ran in loop will integrate 3 phase currents to get average RMS value
+ * @param  null
+ * @retval null
+ */
 void RMS_current_calculation_loop(void){
 	inverter.RMS_current.rms_count++;
 	//integrate phase currents
 	inverter.RMS_current.I_U_square_sum+=(inverter.I_U*inverter.I_U);
 	inverter.RMS_current.I_V_square_sum+=(inverter.I_V*inverter.I_V);
 	inverter.RMS_current.I_W_square_sum+=(inverter.I_W*inverter.I_W);
-//calculate RMS values and average of 3 phases
+	//calculate RMS values and average of 3 phases
 	if(inverter.RMS_current.rms_count>CURRENT_RMS_SAMPLING_COUNT){
 		float I_U_RMS=sqrtf(inverter.RMS_current.I_U_square_sum/(float)inverter.RMS_current.rms_count);
 		float I_V_RMS=sqrtf(inverter.RMS_current.I_V_square_sum/(float)inverter.RMS_current.rms_count);
@@ -603,7 +599,8 @@ void motor_control_loop(void){
 	}
 
 	//synthesize PWM times from stator voltage vector
-	output_sine_pwm(inverter.output_voltage_vector);
+	output_svpwm(inverter.output_voltage_vector);
+	//output_sine_pwm(inverter.output_voltage_vector);
 
 	//start data tansaction with encoder
 	if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){
