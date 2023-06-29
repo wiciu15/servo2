@@ -50,9 +50,9 @@ void mitsubishi_motor_identification(void){
 			//if response is valid decode motor data and encoder resolution
 			if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3D){mitsubishi_encoder_data.encoder_resolution=8192;mitsubishi_encoder_data.motor_family=j2_13bit;} //j2 encoder
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3C){mitsubishi_encoder_data.encoder_resolution=16384;mitsubishi_encoder_data.motor_family=j2_14bit;} //j2 encoder
-			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x41){mitsubishi_encoder_data.encoder_resolution=131072;mitsubishi_encoder_data.motor_family=j2super;} //j2super 17 bit encoders
-			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x4B){mitsubishi_encoder_data.encoder_resolution=131072;mitsubishi_encoder_data.motor_family=je;} //mr-je/mr-e encoder 17bit
-			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x44){mitsubishi_encoder_data.encoder_resolution=262144;mitsubishi_encoder_data.motor_family=j3j4;} //j3 and j4 encoder have the same encoder id but j4 claims 22bit resolution, maybe different command is needed
+			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x41){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=j2super;} //j2super 17 bit encoders
+			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x4B){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=je;} //mr-je/mr-e encoder 17bit
+			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x44){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=j3j4;} //j3 and j4 encoder have the same encoder id but j4 claims 22bit resolution, maybe different command is needed
 			else{mitsubishi_encoder_data.encoder_resolution=131072;mitsubishi_encoder_data.motor_family=unknown_family;}
 			mitsubishi_encoder_data.motor_series_id=mitsubishi_encoder_data.motor_data_response_packet[3];
 			//determine speed and power
@@ -60,7 +60,7 @@ void mitsubishi_motor_identification(void){
 			mitsubishi_encoder_data.motor_speed=(mitsubishi_encoder_data.motor_data_response_packet[4] & 0x0F)*1000;
 			//set command to send to encoder depending on its type
 			if(mitsubishi_encoder_data.encoder_resolution==8192){mitsubishi_encoder_data.encoder_command=0x1A;}//j2s series also gives position after this command but resolution is limited to 16-bit
-			else {mitsubishi_encoder_data.encoder_command=0xA2;}
+			else {mitsubishi_encoder_data.encoder_command=0x1A;}
 			//allow hotplug of the encoder
 			mitsubishi_encoder_data.encoder_state=encoder_ok;
 			if(inverter.error==encoder_error_no_communication){
@@ -87,10 +87,10 @@ void mitsubishi_encoder_process_data(void){
 		if(mitsubishi_encoder_data.checksum_error_count>100){mitsubishi_encoder_data.encoder_state=encoder_error_no_communication;}
 	}*/
 	//else{ //calculate position and speed from received earlier data
-	if(mitsubishi_encoder_data.encoder_resolution==131072){
+	if(mitsubishi_encoder_data.encoder_resolution==65535){
 		mitsubishi_encoder_data.last_encoder_position=mitsubishi_encoder_data.encoder_position;
-		if(mitsubishi_encoder_data.motor_response[0]==0xA2){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[2]>>3 | mitsubishi_encoder_data.motor_response[3]<<5 | mitsubishi_encoder_data.motor_response[4]<<13;}
-		if(mitsubishi_encoder_data.encoder_position>131073){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
+		if(mitsubishi_encoder_data.motor_response[0]==0x1A){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[2]>>4 | mitsubishi_encoder_data.motor_response[3]<<4 | mitsubishi_encoder_data.motor_response[4]<<12;}
+		//if(mitsubishi_encoder_data.encoder_position>65535){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
 		int32_t speed = mitsubishi_encoder_data.last_encoder_position-mitsubishi_encoder_data.encoder_position;
 		if(((speed>5000) && (speed<125000))||
 				((speed<(-5000)) && (speed>(-125000)))){
@@ -101,7 +101,7 @@ void mitsubishi_encoder_process_data(void){
 	if(mitsubishi_encoder_data.encoder_resolution==8192){
 		mitsubishi_encoder_data.last_encoder_position=mitsubishi_encoder_data.encoder_position;
 		if(mitsubishi_encoder_data.motor_response[0]==0x1A){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[2] | mitsubishi_encoder_data.motor_response[3]<<8;}
-		if(mitsubishi_encoder_data.encoder_position>8193){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
+		if(mitsubishi_encoder_data.encoder_position>8192){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
 		int32_t speed = mitsubishi_encoder_data.last_encoder_position-mitsubishi_encoder_data.encoder_position;
 		if(((speed>100) && (speed<8000))||
 				((speed<(-100)) && (speed>(-8000)))){
@@ -110,14 +110,14 @@ void mitsubishi_encoder_process_data(void){
 		}
 	}
 
-	inverter.encoder_raw_position=mitsubishi_encoder_data.encoder_position>>1;//divide by 2 to fit into uint16
+	inverter.encoder_raw_position=mitsubishi_encoder_data.encoder_position;
 	if(mitsubishi_encoder_data.encoder_resolution==8192){
 		inverter.rotor_electric_angle=(((fmodf(mitsubishi_encoder_data.encoder_position, 8192.0f/(float)parameter_set.motor_pole_pairs))/(8192.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
 		if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
 		if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
 	}
-	if(mitsubishi_encoder_data.encoder_resolution==131072){
-		inverter.rotor_electric_angle=(((fmodf(mitsubishi_encoder_data.encoder_position,131072.0f/(float)parameter_set.motor_pole_pairs))/(131072.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
+	if(mitsubishi_encoder_data.encoder_resolution==65535){
+		inverter.rotor_electric_angle=(((fmodf(mitsubishi_encoder_data.encoder_position,65535.0f/(float)parameter_set.motor_pole_pairs))/(65535.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
 		if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
 		if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
 	}
