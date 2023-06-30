@@ -24,9 +24,9 @@ extern osTimerId_t timerSoftstartHandle;
 //DEFAULT PARAMETER SET FROM DRIVE ROM, values would reset between restarts, @TODO: read and write parameter set from flash on boot
 parameter_set_t parameter_set={
 		.software_version=SOFTWARE_VERSION,
-		.motor_max_current=9.0f, //14.3 according to datasheet
-		.motor_nominal_current=5.0f,
-		.motor_pole_pairs=5, //4 for abb motor 5 for bch and mitsubishi hf-kn43
+		.motor_max_current=10.5f, //14.3 according to datasheet
+		.motor_nominal_current=6.8f,
+		.motor_pole_pairs=4, //4 for abb motor 5 for bch and mitsubishi hf-kn43
 		.motor_max_voltage=170.0f,
 		.motor_max_torque=7.17f,
 		.motor_nominal_torque=2.39f,
@@ -38,7 +38,8 @@ parameter_set_t parameter_set={
 		.motor_K=0.18f,  //electical constant in V/(rad/s*pole_pairs) 1000RPM=104.719rad/s
 		.motor_feedback_type=abz_encoder,
 		.encoder_electric_angle_correction=0.0f, //-90 for abb BSM, 0 for bch, 0 for abb esm18, 60 for hf-kn43
-		.encoder_resolution=5000,
+		.encoder_resolution=4000,
+		.encoder_polarity=1,
 
 
 		.current_filter_ts=0.001f,
@@ -87,7 +88,7 @@ inverter_t inverter={
 		},
 		.DCbus_volts_for_sample=0.421f,
 		.igbt_overtemperature_limit=65.0f,
-		.undervoltage_limit=10,
+		.undervoltage_limit=100,
 		.overvoltage_limit=380.0f,
 		.encoder_raw_position=0,
 		.speed_measurement_loop_i=0,

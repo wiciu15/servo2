@@ -30,6 +30,7 @@ typedef struct _parameter_set_t{
 	motor_feedback_type_t motor_feedback_type;  //type of feedback
 	float encoder_electric_angle_correction;  //correction of difference in electric angle calculated from encoder and electric angle of stator current. needed to achieve 90/-90 torque angle
 	uint16_t encoder_resolution;
+	uint8_t encoder_polarity; //flip direction of encoder
 
 	float current_filter_ts; //measured Id/Iq-low pass filter time constant for torque regulator
 	float torque_current_ctrl_proportional_gain;

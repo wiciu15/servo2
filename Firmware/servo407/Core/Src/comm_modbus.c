@@ -23,22 +23,27 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 3: response = inverter.state;break;
 	case 5: response = inverter.control_mode;break;
 	case 6:{if(inverter.control_mode==manual || inverter.control_mode==open_loop_current){response = (int16_t)(inverter.stator_field_speed/(_2_PI/MOTOR_CTRL_LOOP_FREQ))*10;}if(inverter.control_mode==foc){response = inverter.speed_setpoint;} break;}
-	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode == foc){response = (int16_t)((inverter.torque_current_setpoint/parameter_set.motor_nominal_current)*1000.0f);}break;}
-	case 8:{if(inverter.control_mode==open_loop_current || inverter.control_mode==foc){response = (int16_t)((inverter.field_current_setpoint/parameter_set.motor_nominal_current)*1000.0f);}break;}
+	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode == foc){response = (int16_t)(((inverter.torque_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
+	case 8:{if(inverter.control_mode==open_loop_current || inverter.control_mode==foc){response = (int16_t)(((inverter.field_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
 	case 10: response = (int16_t)(inverter.I_RMS *100.0f);break;
 	case 11: response = (uint16_t)(inverter.stator_electric_angle*(180.0f/_PI)*100.0f);break;
 	case 12: response = (int16_t)(inverter.torque_angle*(180.0f/_PI));break;
 	case 13: response = (int16_t)(inverter.filtered_rotor_speed);break;
 	case 14: response = (uint16_t)(inverter.DCbus_voltage*10.0f);break;
-	case 15: response = (int16_t)(inverter.I_d_filtered*100.0f);break;
-	case 16: response = (int16_t)(inverter.I_q_filtered*100.0f);break;
+	case 15: response = (int16_t)((inverter.I_d_filtered/_SQRT2)*100.0f);break;
+	case 16: response = (int16_t)((inverter.I_q_filtered/_SQRT2)*100.0f);break;
 	case 17: response = inverter.encoder_raw_position;break;
 	case 18: response = inverter.output_voltage*10.0f;break;
 	case 19: response = (int16_t)(inverter.IGBT_temp*10.0f);break;
 
 	case 20: response = parameter_set.motor_feedback_type;break;
 	case 21: response = (int16_t)(parameter_set.encoder_electric_angle_correction*(180.0f/_PI));break;
-	case 22: response = parameter_set.encoder_resolution;break;
+	case 22: {if(parameter_set.encoder_polarity){ //if encoder direction flipped return negative number
+		response =  (int16_t)parameter_set.encoder_resolution/-2;
+	}else{
+		response = (int16_t)parameter_set.encoder_resolution/2;
+	}
+	break;}
 	//case 23: if(parameter_set.motor_feedback_type==mitsubishi_encoder){response = mitsubishi_encoder_data.excessive_acceleration_error_count;}if(parameter_set.motor_feedback_type==tamagawa_encoder){response = tamagawa_encoder_data.excessive_acceleration_error_count;}break;
 	case 31: response = parameter_set.motor_pole_pairs;break;
 	case 32: response = (parameter_set.motor_nominal_current/_SQRT2)*100.0f;break;
@@ -145,9 +150,14 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	//Encoder resolution
 	case 22:
 	{
-		uint16_t received_value = value;
-		if(received_value>=250 && received_value<=65536){
-			parameter_set.encoder_resolution=received_value;
+		int16_t received_value = value;
+		if(received_value>=500 && received_value<=32000){
+			parameter_set.encoder_resolution=received_value*2;
+			parameter_set.encoder_polarity=0;
+		}
+		if(received_value<=-500 && received_value>=-32000){
+			parameter_set.encoder_resolution=-received_value*2;
+			parameter_set.encoder_polarity=1;
 		}
 		break;}
 	//Motor pole pairs
