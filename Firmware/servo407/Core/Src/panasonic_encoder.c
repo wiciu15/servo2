@@ -48,7 +48,7 @@ void panasonic_encoder_read_position(void){
 	}
 	else{ //calculate position and speed from received earlier data
 		panasonic_encoder_data.last_encoder_position=panasonic_encoder_data.encoder_position;
-		panasonic_encoder_data.encoder_position=(panasonic_encoder_data.motor_data_response_packet[2] | panasonic_encoder_data.motor_data_response_packet[3]<<8 | panasonic_encoder_data.motor_data_response_packet[4]<<16);
+		panasonic_encoder_data.encoder_position=1048576-(panasonic_encoder_data.motor_data_response_packet[2] | panasonic_encoder_data.motor_data_response_packet[3]<<8 | panasonic_encoder_data.motor_data_response_packet[4]<<16);
 		panasonic_encoder_data.speed = panasonic_encoder_data.last_encoder_position-panasonic_encoder_data.encoder_position;
 		inverter.encoder_raw_position=panasonic_encoder_data.encoder_position>>4;
 		inverter.rotor_electric_angle=(((fmodf(panasonic_encoder_data.encoder_position, 1048576.0f/(float)parameter_set.motor_pole_pairs))/(1048576.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
