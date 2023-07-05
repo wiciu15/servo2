@@ -36,7 +36,7 @@ parameter_set_t parameter_set={
 		.motor_rs=0.25f,
 		.motor_ls=0.002f, //winding inductance in H
 		.motor_K=0.18f,  //electical constant in V/(rad/s*pole_pairs) 1000RPM=104.719rad/s
-		.motor_feedback_type=abz_encoder,
+		.motor_feedback_type=panasonic_minas_encoder,
 		.encoder_electric_angle_correction=0.0f, //-90 for abb BSM, 0 for bch, 0 for abb esm18, 60 for hf-kn43
 		.encoder_resolution=4000,
 		.encoder_polarity=1,
@@ -155,6 +155,8 @@ void inverter_setup(void){
 		HAL_GPIO_WritePin(ENC_ENABLE_GPIO_Port, ENC_ENABLE_Pin, 1);
 		osDelay(300);
 	}
+	if(parameter_set.motor_feedback_type==panasonic_minas_encoder && panasonic_encoder_data.encoder_state==encoder_eeprom_reading){panasonic_encoder_motor_identification();}
+	if(parameter_set.motor_feedback_type==tamagawa_encoder && tamagawa_encoder_data.encoder_state==encoder_eeprom_reading){tamagawa_encoder_motor_identification();	}
 	if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
 	if(parameter_set.motor_feedback_type == abz_encoder){HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);} //enable abz encoder inputs
 	HAL_TIM_Base_Start_IT(&htim5); //start main motor control loop
@@ -498,7 +500,7 @@ void motor_control_loop(void){
 		HOT_ADC_read();
 	}
 	//check if softstart relay is energized, due to software timer failure it can be not energized while inverter is in ready state
-	if(!HAL_GPIO_ReadPin(SOFTSTART_GPIO_Port, SOFTSTART_Pin) && (inverter.state==run||inverter.state==stop)){
+	if(!HAL_GPIO_ReadPin(SOFTSTART_GPIO_Port, SOFTSTART_Pin) && (inverter.state==run)){
 		inverter_error_trip(softstart_failure);
 	}
 
@@ -521,6 +523,8 @@ void motor_control_loop(void){
 	//calculate/get rotor electric angle from encoder
 	if(parameter_set.motor_feedback_type==abz_encoder){abz_encoder_calculate_abs_position();}
 	if(parameter_set.motor_feedback_type==mitsubishi_encoder){mitsubishi_encoder_process_data();}
+	if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_read_position();}
+	if(parameter_set.motor_feedback_type==panasonic_minas_encoder){panasonic_encoder_read_position();}
 
 	//calculate torque angle
 	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}

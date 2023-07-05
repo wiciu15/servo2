@@ -24,6 +24,8 @@
 #include "pid.h"
 #include "parameter_set.h"
 #include "mitsubishi_encoder.h"
+#include "tamagawa_encoder.h"
+#include "panasonic_encoder.h"
 #include "abz_encoder.h"
 
 //list of possible inverter errors that need to inhibit output and trip the inverter

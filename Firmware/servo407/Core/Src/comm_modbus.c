@@ -108,7 +108,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 
 	case 7: //set output voltage in manual/torque in foc
 	{if(inverter.control_mode==manual){
-		if(value<=4000 && value>=0){inverter.output_voltage = ((float)value/10.0f);}
+		if(value<=1000 && value>=0){inverter.output_voltage = ((float)value/1000.0f)*inverter.DCbus_voltage;}
 		}
 	if(inverter.control_mode==open_loop_current || inverter.control_mode==foc ){
 		int16_t received_torque_setpoint = (int16_t)value;

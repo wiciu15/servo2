@@ -10,7 +10,7 @@
 
 #include "inverter.h"
 
-typedef enum {no_feedback,abz_encoder,mitsubishi_encoder,tamagawa_encoder,delta_encoder}motor_feedback_type_t;
+typedef enum {no_feedback,abz_encoder,mitsubishi_encoder,tamagawa_encoder,delta_encoder,panasonic_minas_encoder}motor_feedback_type_t;
 
 typedef struct _parameter_set_t{
 	uint16_t software_version; //software version on which parameter set was created
