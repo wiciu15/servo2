@@ -36,7 +36,7 @@ parameter_set_t parameter_set={
 		.motor_rs=0.25f,
 		.motor_ls=0.002f, //winding inductance in H
 		.motor_K=0.18f,  //electical constant in V/(rad/s*pole_pairs) 1000RPM=104.719rad/s
-		.motor_feedback_type=panasonic_minas_encoder,
+		.motor_feedback_type=abz_encoder,
 		.encoder_electric_angle_correction=0.0f, //-90 for abb BSM, 0 for bch, 0 for abb esm18, 60 for hf-kn43
 		.encoder_resolution=4000,
 		.encoder_polarity=1,
