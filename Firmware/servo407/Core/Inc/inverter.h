@@ -23,6 +23,7 @@
 
 #include "pid.h"
 #include "parameter_set.h"
+#include "eeprom.h"
 #include "mitsubishi_encoder.h"
 #include "tamagawa_encoder.h"
 #include "panasonic_encoder.h"

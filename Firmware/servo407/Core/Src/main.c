@@ -82,7 +82,7 @@ DMA_HandleTypeDef hdma_usart1_tx;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 512 * 4,
+  .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for taskModbusUSB */
@@ -530,7 +530,7 @@ static void MX_I2C1_Init(void)
 
   /* USER CODE END I2C1_Init 1 */
   hi2c1.Instance = I2C1;
-  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.ClockSpeed = 400000;
   hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
   hi2c1.Init.OwnAddress1 = 0;
   hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
@@ -1220,19 +1220,9 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi){
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
-	/* init code for USB_DEVICE */
-	MX_USB_DEVICE_Init();
-	/* USER CODE BEGIN 5 */
-	//eeprom_init(&hi2c1,I2C_MEMADD_SIZE_8BIT);
-	//uint8_t data []={0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF};
-	//for(uint8_t i=0;i<16;i++){
-		//eeprom_write(0, (uint8_t*)&data, sizeof(data));
-		//osDelay(30);
-
-	//osDelay(20);
-	//uint8_t rcv_data [256];
-	//eeprom_read(0, (uint8_t*)&rcv_data, 256);
-	osDelay(100);
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
+  /* USER CODE BEGIN 5 */
 	inverter_setup();
 	osDelay(20);
 	/* Infinite loop */

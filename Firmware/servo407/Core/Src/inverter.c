@@ -82,6 +82,7 @@ inverter_t inverter={
 		.output_current_adc_buffer={0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f},
 		.HOT_ADC={
 				.HOT_ADC_tx_buffer={0x60,0,0x70,0},
+				.HOT_ADC_rx_buffer={0x00,0x00},
 				.DCVolt_sum=0,
 				.IGBTtemp_sum=0,
 				.measurement_loop_iteration=0
@@ -150,7 +151,10 @@ float U_sat=2.0f;
  * @retval null
  */
 void inverter_setup(void){
-	HAL_ADC_Start_DMA(&hadc2, inverter.output_current_adc_buffer, 10);//start current reading
+	//@TODO: implement writing default parameter set to eeprom
+	read_parameter_set_from_eeprom();
+	osDelay(100);
+	HAL_ADC_Start_DMA(&hadc2, (uint32_t*)inverter.output_current_adc_buffer, 10);//start current reading
 	if(parameter_set.motor_feedback_type!=no_feedback){ //enable encoder power supply
 		HAL_GPIO_WritePin(ENC_ENABLE_GPIO_Port, ENC_ENABLE_Pin, 1);
 		osDelay(300);

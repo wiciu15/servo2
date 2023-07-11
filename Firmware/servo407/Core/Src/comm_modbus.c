@@ -11,6 +11,7 @@
 #include <string.h>
 #include "inverter.h"
 #include "usbd_cdc_if.h"
+#include "eeprom.h"
 
 modbus_instance_t * ptrModbusUSBinstance;
 
@@ -136,7 +137,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	case 20:
 	{
 		uint16_t received_feedback_type = value;
-		if(received_feedback_type<=3 && inverter.state!=run){
+		if(received_feedback_type<=6 && inverter.state!=run){
 			parameter_set.motor_feedback_type=value;}
 		break;}
 	//Encoder angle correction
@@ -311,6 +312,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 		//if not handled inside switch, then read-only parameter
 		break;
 	}
+	if(local_address>=20)save_parameter_set_to_eeprom();
 return value;
 }
 
