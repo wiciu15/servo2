@@ -94,6 +94,7 @@ float DCbus_volts_for_sample;
 float igbt_overtemperature_limit;
 float undervoltage_limit;
 float overvoltage_limit;
+uint16_t chopper_duty_cycle;
 
 uint16_t encoder_raw_position;
 uint8_t speed_measurement_loop_i;

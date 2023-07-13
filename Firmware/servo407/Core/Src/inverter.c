@@ -14,6 +14,7 @@
 #include "cmsis_os.h"
 
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim5;
 extern ADC_HandleTypeDef hadc2;
@@ -21,7 +22,7 @@ extern SPI_HandleTypeDef hspi2;
 
 extern osTimerId_t timerSoftstartHandle;
 
-//DEFAULT PARAMETER SET FROM DRIVE ROM, values would reset between restarts, @TODO: read and write parameter set from flash on boot
+//DEFAULT PARAMETER SET FROM DRIVE ROM used to set default parameter set
 parameter_set_t parameter_set={
 		.software_version=SOFTWARE_VERSION,
 		.motor_max_current=10.5f, //14.3 according to datasheet
@@ -89,8 +90,9 @@ inverter_t inverter={
 		},
 		.DCbus_volts_for_sample=0.421f,
 		.igbt_overtemperature_limit=65.0f,
-		.undervoltage_limit=100,
-		.overvoltage_limit=380.0f,
+		.undervoltage_limit=240.0f,
+		.overvoltage_limit=390.0f,
+		.chopper_duty_cycle=0,
 		.encoder_raw_position=0,
 		.speed_measurement_loop_i=0,
 		.I_U=0.0f,
@@ -164,6 +166,7 @@ void inverter_setup(void){
 	if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
 	if(parameter_set.motor_feedback_type == abz_encoder){HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);} //enable abz encoder inputs
 	HAL_TIM_Base_Start_IT(&htim5); //start main motor control loop
+	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); //start braking chopper
 
 }
 /**
@@ -512,6 +515,17 @@ void motor_control_loop(void){
 	if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){inverter_error_trip(undervoltage);}
 	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (inverter.state==stop || inverter.state==trip)){inverter_error_trip(undervoltage_condition);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);}
 	if(inverter.DCbus_voltage>inverter.overvoltage_limit){inverter_error_trip(overvoltage);	}
+
+	//brake chopper control
+	if(inverter.DCbus_voltage>inverter.overvoltage_limit-30.0f){
+		//@TODO: increase 6000 to 10499 to dissipate full 390 volts on chopper resistor
+		inverter.chopper_duty_cycle=(uint16_t)(((inverter.DCbus_voltage-(inverter.overvoltage_limit-20.0f))/20.0f)*6000);
+		if(inverter.chopper_duty_cycle>6000)inverter.chopper_duty_cycle=6000;
+		//@TODO: integrate duty cycle to calculate thermals of braking resistor
+		TIM2->CCR1=inverter.chopper_duty_cycle;
+	}else{
+		TIM2->CCR1=0;
+	}
 
 	//check IGBT temperature
 	if(inverter.IGBT_temp>inverter.igbt_overtemperature_limit){inverter_error_trip(inverter_overtemperature);}

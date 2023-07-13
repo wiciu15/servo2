@@ -26,7 +26,6 @@ void abz_encoder_update_counter_on_marker(void){
 }
 
 void abz_encoder_calculate_abs_position(void){
-	//@TODO: add option to flip direction of encoder
 	if(abz_encoder_data.encoder_state!=abz_encoder_not_marked){
 		abz_encoder_data.encoder_position=TIM3->CNT-parameter_set.encoder_resolution;
 		if(abz_encoder_data.encoder_position>parameter_set.encoder_resolution){abz_encoder_data.encoder_position+=parameter_set.encoder_resolution;}
