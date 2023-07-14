@@ -90,7 +90,7 @@ inverter_t inverter={
 		},
 		.DCbus_volts_for_sample=0.421f,
 		.igbt_overtemperature_limit=65.0f,
-		.undervoltage_limit=240.0f,
+		.undervoltage_limit=230.0f,
 		.overvoltage_limit=390.0f,
 		.chopper_duty_cycle=0,
 		.encoder_raw_position=0,

@@ -44,7 +44,8 @@ typedef enum {no_error,
 	adc_no_communication,
 	internal_software,
 	external_comm,
-	softstart_failure
+	softstart_failure,
+	eeprom_error
 }inverter_error_t;
 typedef enum {stop,run,inhibit,trip}inverter_state_t;
 typedef enum {manual,u_f,open_loop_current,foc}control_mode_t;

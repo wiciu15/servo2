@@ -312,7 +312,12 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 		//if not handled inside switch, then read-only parameter
 		break;
 	}
-	if(local_address>=20)save_parameter_set_to_eeprom();
+	if(local_address>=20){
+		//@TODO: instead of writing on each parameter change give user option to write whole parameter set on demand
+		if(save_parameter_set_to_eeprom()!=HAL_OK){
+			inverter_error_trip(eeprom_error);
+		}
+	}
 return value;
 }
 
