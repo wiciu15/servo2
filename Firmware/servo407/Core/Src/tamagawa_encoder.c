@@ -9,6 +9,7 @@
 #include <string.h>
 #include "cmsis_os.h"
 #include "mitsubishi_encoder.h"
+#include <math.h>
 
 
 extern UART_HandleTypeDef huart1;
@@ -49,6 +50,10 @@ void tamagawa_encoder_read_position(void){
 		tamagawa_encoder_data.last_encoder_position=tamagawa_encoder_data.encoder_position;
 		tamagawa_encoder_data.encoder_position=tamagawa_encoder_data.motor_data_response_packet[2] | tamagawa_encoder_data.motor_data_response_packet[3]<<8 | tamagawa_encoder_data.motor_data_response_packet[4]<<16;
 		tamagawa_encoder_data.speed = tamagawa_encoder_data.last_encoder_position-tamagawa_encoder_data.encoder_position;
+		inverter.encoder_raw_position=tamagawa_encoder_data.encoder_position>>1;
+		inverter.rotor_electric_angle=(((fmodf(tamagawa_encoder_data.encoder_position, 131072.0f/(float)parameter_set.motor_pole_pairs))/(131072.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
+		if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
+		if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
 		//mechanical encoder defect detection not tested
 		if(((tamagawa_encoder_data.speed>2000) && (tamagawa_encoder_data.speed<129000))|| ((tamagawa_encoder_data.speed<(-2000)) && (tamagawa_encoder_data.speed>(-129000)))){
 			tamagawa_encoder_data.excessive_acceleration_error_count++;
