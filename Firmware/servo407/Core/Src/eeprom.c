@@ -52,9 +52,9 @@ uint16_t bytestowrite (uint16_t size, uint16_t offset)
  * @data is the pointer to the data to write in bytes
  * @size is the size of the data
  */
-void EEPROM_Write (uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
+HAL_StatusTypeDef EEPROM_Write (uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
 {
-
+	HAL_StatusTypeDef status=HAL_ERROR;
 	// Find out the number of bit, where the page addressing starts
 	int paddrposition = log(PAGE_SIZE)/log(2);
 
@@ -75,8 +75,8 @@ void EEPROM_Write (uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
 		uint16_t MemAddress = startPage<<paddrposition | offset;
 		uint16_t bytesremaining = bytestowrite(size, offset);  // calculate the remaining bytes to be written
 
-		HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR, MemAddress, 2, &data[pos], bytesremaining, 100);  // write the data to the EEPROM
-
+		status = HAL_I2C_Mem_Write(EEPROM_I2C, EEPROM_ADDR, MemAddress, 2, &data[pos], bytesremaining, 100);  // write the data to the EEPROM
+		if(status!=HAL_OK){break;}
 		startPage += 1;  // increment the page, so that a new page address can be selected for further write
 		offset=0;   // since we will be writing to a new page, so offset will be 0
 		size = size-bytesremaining;  // reduce the size of the bytes
@@ -84,6 +84,7 @@ void EEPROM_Write (uint16_t page, uint16_t offset, uint8_t *data, uint16_t size)
 
 		osDelay (5);  // Write cycle delay (5ms)
 	}
+	return status;
 }
 
 void float2Bytes(uint8_t * ftoa_bytes_temp,float float_variable)
@@ -194,18 +195,47 @@ void EEPROM_PageErase (uint16_t page)
 	osDelay (5);  // write cycle delay
 }
 
+//@TODO: add option to load default values from ROM to RAM during runtime
 
+/* copy parameter set from RAM to EEPROM
+ * and calculate XOR checksum
+ */
 HAL_StatusTypeDef save_parameter_set_to_eeprom(void){
-	//@TODO: calculate CRC of parameter set
-	EEPROM_Write(1, 0, (uint8_t*)&parameter_set, sizeof(parameter_set_t));
-	return HAL_OK;
+	//calculate checksum of parameter set in RAM
+	uint32_t xor_checksum=0;
+	uint32_t * ptr_parameter_set = (uint32_t*)&parameter_set;
+	for(uint8_t i=1;i<sizeof(parameter_set_t)/4;i++){
+		xor_checksum= xor_checksum ^ (*(ptr_parameter_set+i));
+	}
+	if(xor_checksum==0x00000000 || xor_checksum==0xFFFFFFFF){
+		inverter_error_trip(eeprom_error);
+	}
+	parameter_set.XOR_checksum=xor_checksum;
+	//write from RAM to eeprom with newly calculated xor
+	HAL_StatusTypeDef status =HAL_ERROR;
+	status = EEPROM_Write(1, 0, (uint8_t*)&parameter_set, sizeof(parameter_set_t));
+	return status;
 }
+
+
 HAL_StatusTypeDef read_parameter_set_from_eeprom(void){
 	//read data from eeprom to buffer
 	parameter_set_t eeprom_parameter_set;
 	EEPROM_Read(1, 0, (uint8_t*)&eeprom_parameter_set, sizeof(parameter_set_t));
-	//@TODO: calculate CRC of data from eeprom
-	//copy data to parameter set address
+	//calculate XOR checksum of data from eeprom
+	uint32_t xor_checksum=0;
+	uint32_t * ptr_eeprom_parameter_set = (uint32_t*)&eeprom_parameter_set;
+	//start from 1 to not calculate checksum of checksum
+	for(uint8_t i=1;i<sizeof(parameter_set_t)/4;i++){
+		xor_checksum= xor_checksum ^ (*(ptr_eeprom_parameter_set+i));
+	}
+	//@TODO: compare checksums, if 0 or FFFFFFFF the eeprom is empty if i think correctly, but this may be a result of valid data so better checksum method would be needed
+	if((xor_checksum!=eeprom_parameter_set.XOR_checksum) || xor_checksum==0 || xor_checksum==0xFF){
+		inverter_error_trip(eeprom_error); //@TODO: this error should be persistent
+		save_parameter_set_to_eeprom(); //write default parameter set to eeprom
+	}else{
+	//copy data from eeprom to RAM parameter set address
 	memcpy(&parameter_set,&eeprom_parameter_set,sizeof(parameter_set_t));
+	}
 	return HAL_OK;
 }
