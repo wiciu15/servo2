@@ -1082,10 +1082,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOD, LED_STATUS_Pin|LED_ERROR_Pin|ETH_CS_Pin, GPIO_PIN_SET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port, ENCODER_DE_Pin, GPIO_PIN_SET);
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(OLED_DC_GPIO_Port, OLED_DC_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, ENCODER_DE_Pin|OLED_DC_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, ETH_RESET_Pin|MODBUS_DE_Pin, GPIO_PIN_RESET);
@@ -1225,6 +1222,7 @@ void StartDefaultTask(void *argument)
   /* USER CODE BEGIN 5 */
 	inverter_setup();
 	osDelay(20);
+	osThreadResume(uiTaskHandle);
 	/* Infinite loop */
 	for(;;)
 	{
@@ -1269,9 +1267,9 @@ void uiTaskStart(void *argument)
   /* USER CODE BEGIN uiTaskStart */
 	osTimerStart(LEDTimerHandle, 100);
 	display_init();
-	osDelay(1700);
 	osThreadResume(taskModbusUSBHandle);//start usb communication task
 	osThreadResume(defaultTaskHandle); //start motor control
+	osThreadSuspend(uiTaskHandle); //draw startup screen and wait for default task to initialize
   /* Infinite loop */
   for(;;)
   {

@@ -16,7 +16,7 @@ extern UART_HandleTypeDef huart1;
 //uint8_t UART2_RX_raw[10];
 tamagawa_encoder_data_t tamagawa_encoder_data={
 		.checksum_error_count=0,
-		.encoder_command=0x00,
+		.encoder_command=0x1A,
 		//command 0x02 gives position[2,3,4] and cheksum[5], 0x1A gives two positions, 0xC2 resets one-turn data, 0x92 gives two null bytes and checksum
 		//five bits of command, commands are listed in https://www.ti.com/lit/ug/tidue74d/tidue74d.pdf + 010 as sink
 		.encoder_position=0,
@@ -34,7 +34,7 @@ void tamagawa_encoder_read_position(void){
 	if(USART_fast_transmit_RS485(&huart1, tamagawa_encoder_data.encoder_command)!=HAL_OK){inverter_error_trip(internal_software);}
 	if(HAL_UART_Receive_DMA(&huart1, tamagawa_encoder_data.motor_data_response_packet, 11)!=HAL_OK){//start listening for response, it will be automatically copied by DMA after reception
 		tamagawa_encoder_data.communication_error_count++;
-		if(tamagawa_encoder_data.communication_error_count>10){memset(&tamagawa_encoder_data,0,sizeof(tamagawa_encoder_data_t));inverter_error_trip(encoder_error_communication);}
+		if(tamagawa_encoder_data.communication_error_count>10){inverter_error_trip(encoder_error_communication);}
 	}else{tamagawa_encoder_data.communication_error_count=0;}
 
 	uint8_t xor_cheksum=0;
@@ -43,7 +43,7 @@ void tamagawa_encoder_read_position(void){
 	}
 	if(xor_cheksum!=tamagawa_encoder_data.motor_data_response_packet[10]){
 		tamagawa_encoder_data.checksum_error_count++;
-		if(tamagawa_encoder_data.checksum_error_count>100){memset(&tamagawa_encoder_data,0,sizeof(tamagawa_encoder_data_t));inverter_error_trip(encoder_error_communication);}
+		if(tamagawa_encoder_data.checksum_error_count>100){inverter_error_trip(encoder_error_communication);}
 	}
 	else{ //calculate position and speed from received earlier data
 		//tamagawa_encoder_data.encoder_state=encoder_ok;
@@ -72,7 +72,7 @@ HAL_StatusTypeDef tamagawa_encoder_read_eeprom(uint8_t address, uint8_t * receiv
 	status = HAL_UART_Receive_DMA(&huart1, received_data, 4);
 	if(status!=HAL_OK){
 		tamagawa_encoder_data.communication_error_count++;
-		if(tamagawa_encoder_data.communication_error_count>10){tamagawa_encoder_data.encoder_state=encoder_error_no_communication;memset(&tamagawa_encoder_data,0,sizeof(tamagawa_encoder_data_t));inverter_error_trip(encoder_error_communication);}
+		if(tamagawa_encoder_data.communication_error_count>10){tamagawa_encoder_data.encoder_state=encoder_error_no_communication;inverter_error_trip(encoder_error_communication);}
 	}
 	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 1);
 	if(HAL_UART_Transmit(&huart1, tamagawa_encoder_data.motor_eeprom_request, 3, 1)){inverter_error_trip(internal_software);}
@@ -96,7 +96,7 @@ HAL_StatusTypeDef tamagawa_encoder_read_id(void){
 	status = HAL_UART_Receive_DMA(&huart1, received_data, 4);
 	if(status!=HAL_OK){
 		tamagawa_encoder_data.communication_error_count++;
-		if(tamagawa_encoder_data.communication_error_count>10){tamagawa_encoder_data.encoder_state=encoder_error_no_communication;memset(&tamagawa_encoder_data,0,sizeof(tamagawa_encoder_data_t));inverter_error_trip(encoder_error_communication);}
+		if(tamagawa_encoder_data.communication_error_count>10){tamagawa_encoder_data.encoder_state=encoder_error_no_communication;inverter_error_trip(encoder_error_communication);}
 	}
 	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 1);
 	uint8_t command=0x92;
@@ -126,7 +126,7 @@ HAL_StatusTypeDef tamagawa_encoder_write_eeprom(uint8_t address, uint8_t data){
 		status = HAL_UART_Receive_DMA(&huart1, received_data, 4);
 		if(status!=HAL_OK){
 			tamagawa_encoder_data.communication_error_count++;
-			if(tamagawa_encoder_data.communication_error_count>10){tamagawa_encoder_data.encoder_state=encoder_error_no_communication;memset(&tamagawa_encoder_data,0,sizeof(tamagawa_encoder_data_t));inverter_error_trip(encoder_error_communication);}
+			if(tamagawa_encoder_data.communication_error_count>10){tamagawa_encoder_data.encoder_state=encoder_error_no_communication;inverter_error_trip(encoder_error_communication);}
 		}else{
 			HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 1);
 			if(HAL_UART_Transmit(&huart1, data_to_send, 4, 1)){inverter_error_trip(internal_software);}
@@ -142,15 +142,15 @@ HAL_StatusTypeDef tamagawa_encoder_write_eeprom(uint8_t address, uint8_t data){
 }
 
 void tamagawa_encoder_motor_identification(){
-	//tamagawa_encoder_read_id();
+	tamagawa_encoder_read_id();
 	for(uint8_t i=0;i<80;i++){
 		uint8_t received_data=0;
-		if(tamagawa_encoder_read_eeprom(i,&received_data)!=HAL_OK){i--;if(tamagawa_encoder_data.communication_error_count>9){break;}}else{
+		if(tamagawa_encoder_read_eeprom(i,&received_data)!=HAL_OK){i--;if(tamagawa_encoder_data.communication_error_count + tamagawa_encoder_data.checksum_error_count>9 ){break;}}else{
 			tamagawa_encoder_data.motor_eeprom[i]=received_data;}
 	}
-	if(tamagawa_encoder_data.communication_error_count>9){inverter_error_trip(encoder_error_communication);}else{
+	if(tamagawa_encoder_data.communication_error_count + tamagawa_encoder_data.checksum_error_count>9){inverter_error_trip(encoder_error_communication);}else{
 	tamagawa_encoder_data.encoder_state=encoder_ok;
-	if(inverter.error==encoder_error_communication){inverter.error=no_error;}
+	//if(inverter.error==encoder_error_communication){inverter.error=no_error;} //used if hotplug is allowed
 	tamagawa_encoder_data.encoder_command=0x1A;}
 }
 
