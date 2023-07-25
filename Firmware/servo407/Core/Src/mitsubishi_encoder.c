@@ -30,12 +30,12 @@ HAL_StatusTypeDef USART_fast_transmit_RS485(UART_HandleTypeDef * huart, uint8_t 
 void mitsubishi_motor_identification(void){
 	//first send 4 packets with 0x92 command  (encoder reset probably, then 8 with 0x7A command (motor data read)
 	mitsubishi_encoder_data.encoder_command = 0x92;
-	for(uint8_t i=0;i<=20;i++){
-		if(i>=4){mitsubishi_encoder_data.encoder_command=0x7A;}
+	for(uint8_t i=0;i<=30;i++){
+		if(i>=11){mitsubishi_encoder_data.encoder_command=0x7A;}
 		mitsubishi_encoder_send_command();
 		osDelay(1);
-		if(i>5 && mitsubishi_encoder_data.motor_response[0]==0x7A){break;}
-		if(i>=19){mitsubishi_encoder_data.encoder_state=encoder_error_no_communication;}
+		if(i>15 && mitsubishi_encoder_data.motor_response[0]==0x7A){break;}
+		if(i>=29){mitsubishi_encoder_data.encoder_state=encoder_error_no_communication;}
 	}
 	//check if encoder sent valid data back by calculating XOR
 	memcpy(&mitsubishi_encoder_data.motor_data_response_packet,&mitsubishi_encoder_data.motor_response,9);
@@ -48,7 +48,7 @@ void mitsubishi_motor_identification(void){
 	}else{
 		if(mitsubishi_encoder_data.motor_data_response_packet[0]==0x7A ){
 			//if response is valid decode motor data and encoder resolution
-			if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3D){mitsubishi_encoder_data.encoder_resolution=8192;mitsubishi_encoder_data.motor_family=j2_13bit;} //j2 encoder
+			if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3D){mitsubishi_encoder_data.encoder_resolution=8192;set_ctrl_loop_frequency(5000);mitsubishi_encoder_data.motor_family=j2_13bit;} //j2 encoder
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3C){mitsubishi_encoder_data.encoder_resolution=16384;mitsubishi_encoder_data.motor_family=j2_14bit;} //j2 encoder
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x41){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=j2super;} //j2super 17 bit encoders
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x4B){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=je;} //mr-je/mr-e encoder 17bit

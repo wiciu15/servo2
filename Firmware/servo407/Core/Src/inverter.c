@@ -32,7 +32,7 @@ parameter_set_t parameter_set={
 		.motor_max_torque=7.17f,
 		.motor_nominal_torque=2.39f,
 		.motor_nominal_speed=3000.0f,
-		.motor_base_frequency=200*(_2_PI/MOTOR_CTRL_LOOP_FREQ),
+		.motor_base_frequency=200.0f,
 		.motor_max_speed=2000.0f,
 		.motor_rs=0.25f,
 		.motor_ls=0.002f, //winding inductance in H
@@ -50,13 +50,16 @@ parameter_set_t parameter_set={
 		.field_current_ctrl_integral_gain=2000.0f,
 
 		.speed_filter_ts=0.01f,
-		.speed_controller_proportional_gain=0.04f,
-		.speed_controller_integral_gain=0.6f,
+		.speed_controller_proportional_gain=0.015f,
+		.speed_controller_integral_gain=0.3f,
 		.speed_controller_output_torque_limit=1.0f, //limit torque, Iq is the output so the calcualtion is needed to convert N/m to A
 		.speed_controller_integral_limit=1.0f //1.0 is for example, valid iq current gets copied from motor max current
+
+
 };
 
 inverter_t inverter={
+		.control_loop_freq=8000,
 		.error=no_error,
 		.state=inhibit,
 		.control_mode=manual,
@@ -127,14 +130,14 @@ inverter_t inverter={
 				0.0f,
 				0.0f,
 				0.0f,0.0f,
-				1.0f/MOTOR_CTRL_LOOP_FREQ,
+				1.0f/DEFAULT_CTRL_LOOP_FREQ,
 				0.0f,0.0f,0.0f,0.0f
 		},
 		.iq_current_controller_data = {
 				0.0f,
 				0.0f,
 				0.0f,0.0f,
-				1.0f/MOTOR_CTRL_LOOP_FREQ,
+				1.0f/DEFAULT_CTRL_LOOP_FREQ,
 				0.0f,0.0f,0.0f,0.0f
 		},
 		.speed_controller_data = {
@@ -156,6 +159,7 @@ void inverter_setup(void){
 	//@TODO: implement writing default parameter set to eeprom
 	read_parameter_set_from_eeprom();
 	osDelay(100);
+	set_ctrl_loop_frequency(DEFAULT_CTRL_LOOP_FREQ);
 	HAL_ADC_Start_DMA(&hadc2, (uint32_t*)inverter.output_current_adc_buffer, 10);//start current reading
 	if(parameter_set.motor_feedback_type!=no_feedback){ //enable encoder power supply
 		HAL_GPIO_WritePin(ENC_ENABLE_GPIO_Port, ENC_ENABLE_Pin, 1);
@@ -168,6 +172,14 @@ void inverter_setup(void){
 	HAL_TIM_Base_Start_IT(&htim5); //start main motor control loop
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); //start braking chopper
 
+}
+
+void set_ctrl_loop_frequency(uint16_t frequency){
+	inverter.control_loop_freq=frequency;
+	TIM5->ARR=(84000000/(uint32_t)inverter.control_loop_freq)-1;
+	inverter.id_current_controller_data.sampling_time=1.0f/inverter.control_loop_freq;
+	inverter.iq_current_controller_data.sampling_time=1.0f/inverter.control_loop_freq;
+	inverter.speed_controller_data.sampling_time=(1.0f/inverter.control_loop_freq)*10;
 }
 /**
   * @brief  Enable PWM output of the inverter
@@ -291,7 +303,7 @@ void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float
 
 //Tf - filter time constant in seconds
 float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_value){
-	float alpha = Tf/(Tf + 0.000125f); //0.000125 = 1/8kHz - pwm interrupt frequency and sampling
+	float alpha = Tf/(Tf + (1.0f/inverter.control_loop_freq)); //works if called synchronously with motor control loop
 	float filtered_value = (alpha*(*last_filtered_value)) + ((1.0f - alpha)*actual_measurement);
 	*last_filtered_value = filtered_value;
 	return filtered_value;
@@ -552,9 +564,9 @@ void motor_control_loop(void){
 	//calculate rotor speed
 	if(inverter.speed_measurement_loop_i>=10){
 		float speed_calc_angle_delta=inverter.rotor_electric_angle-inverter.last_rotor_electric_angle;
-		inverter.rotor_speed=((speed_calc_angle_delta)/parameter_set.motor_pole_pairs)*9.549296f*(MOTOR_CTRL_LOOP_FREQ/10.0f);
+		inverter.rotor_speed=((speed_calc_angle_delta)/parameter_set.motor_pole_pairs)*9.549296f*(inverter.control_loop_freq/10.0f);
 		//speed(rpm) = ((x(deg)/polepairs)/360deg)/(0,002(s)/60s)
-		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(MOTOR_CTRL_LOOP_FREQ/10);
+		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(inverter.control_loop_freq/10);
 		if(inverter.rotor_speed>theoretical_encoder_speed/2.0f){inverter.rotor_speed-=theoretical_encoder_speed;}if(inverter.rotor_speed<(-theoretical_encoder_speed/2.0f)){inverter.rotor_speed+=theoretical_encoder_speed;}
 		inverter.last_rotor_electric_angle = inverter.rotor_electric_angle;
 		if(inverter.control_mode==foc && inverter.speed_setpoint!=0 && inverter.state==run){
@@ -578,7 +590,7 @@ void motor_control_loop(void){
 
 	//if in u/f mode calculate voltage for given frequency
 	if(inverter.control_mode==u_f){
-		inverter.output_voltage=(inverter.stator_field_speed/parameter_set.motor_base_frequency)*parameter_set.motor_max_voltage;
+		inverter.output_voltage=(inverter.stator_field_speed/(parameter_set.motor_base_frequency*(_2_PI/inverter.control_loop_freq)))*parameter_set.motor_max_voltage;
 	}
 	//calculate field and torque currents
 	if(inverter.control_mode!=foc){

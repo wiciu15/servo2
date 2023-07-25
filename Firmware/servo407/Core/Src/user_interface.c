@@ -103,7 +103,7 @@ void draw(){
 	switch(inverter.state){
 	case run:
 		if(inverter.control_mode==foc){sprintf(statusString,"RUN %.0fRPM %.1fA %.0f C",inverter.filtered_rotor_speed,inverter.I_RMS,inverter.IGBT_temp);}
-		else{sprintf(statusString,"RUN %.1fHz %.1fA %.0f C",inverter.stator_field_speed/(_2_PI/MOTOR_CTRL_LOOP_FREQ),inverter.I_RMS,inverter.IGBT_temp);}
+		else{sprintf(statusString,"RUN %.1fHz %.1fA %.0f C",inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq),inverter.I_RMS,inverter.IGBT_temp);}
 		break;
 	case stop:
 		sprintf(statusString,"RDY %.0fRPM %.0fV %.0f C",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);break;

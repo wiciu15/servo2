@@ -13,7 +13,7 @@
 #define INVERTER_OVERCURRENT_TRIP_LEVEL 10.0f  //overcurrrent trip setting level in Amperes
 #define ADC_SAMPLES_PER_AMP 65.0f //number of ADC samples read for 1A of phase current
 #define CURRENT_RMS_SAMPLING_COUNT 500 //(2*pwm frequency)/this define=rms current sampling frequency, for 500 = 32 calculations per second
-#define MOTOR_CTRL_LOOP_FREQ 8000.0f
+#define DEFAULT_CTRL_LOOP_FREQ 8000
 
 #define _2_PI 6.283185f
 #define _PI 3.141592f
@@ -68,6 +68,7 @@ typedef struct _RMS_current_t{
 }RMS_current_t;
 
 typedef struct _inverter_t {
+float control_loop_freq;
 uint32_t error;
 inverter_state_t state;
 control_mode_t control_mode;
@@ -129,6 +130,7 @@ extern inverter_t inverter;
 extern parameter_set_t parameter_set;
 
 void inverter_setup(void);
+void set_ctrl_loop_frequency(uint16_t frequency);
 void inverter_enable(void);
 void inverter_disable(void);
 void inverter_error_trip(uint8_t error_number);

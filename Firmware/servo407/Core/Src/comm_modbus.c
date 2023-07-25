@@ -23,7 +23,7 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 2: response = inverter.error;break;
 	case 3: response = inverter.state;break;
 	case 5: response = inverter.control_mode;break;
-	case 6:{if(inverter.control_mode==manual || inverter.control_mode==open_loop_current){response = (int16_t)(inverter.stator_field_speed/(_2_PI/MOTOR_CTRL_LOOP_FREQ))*10;}if(inverter.control_mode==foc){response = inverter.speed_setpoint;} break;}
+	case 6:{if(inverter.control_mode==manual || inverter.control_mode==open_loop_current){response = (int16_t)(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq))*10;}if(inverter.control_mode==foc){response = inverter.speed_setpoint;} break;}
 	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode == foc){response = (int16_t)(((inverter.torque_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
 	case 8:{if(inverter.control_mode==open_loop_current || inverter.control_mode==foc){response = (int16_t)(((inverter.field_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
 	case 10: response = (int16_t)(inverter.I_RMS *100.0f);break;
@@ -57,7 +57,7 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 39: response = parameter_set.motor_rs*1000.0f;break;
 	case 40: response = parameter_set.motor_ls*1000000.0f;break;
 	case 41: response = parameter_set.motor_K*100000.0f;break;
-	case 42: response = (parameter_set.motor_base_frequency/(_2_PI/MOTOR_CTRL_LOOP_FREQ))*100;break;
+	case 42: response = parameter_set.motor_base_frequency*100;break;
 	case 50: response = parameter_set.torque_current_ctrl_proportional_gain*10.0f;break;
 	case 51: response = parameter_set.torque_current_ctrl_integral_gain;break;
 	case 52: response = parameter_set.field_current_ctrl_proportional_gain*10.0f;break;
@@ -100,7 +100,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	case 6: //speed setpoint in rpm
 	{int16_t received_speed=value;
 	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current){
-		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.stator_field_speed = ((float)received_speed*(_2_PI/MOTOR_CTRL_LOOP_FREQ))/10.0f;}
+		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.stator_field_speed = ((float)received_speed*(_2_PI/inverter.control_loop_freq))/10.0f;}
 	}
 	if(inverter.control_mode==foc){
 		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.speed_setpoint = received_speed;}
@@ -245,7 +245,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	{
 		uint16_t received_value = value;
 		if(received_value>=1 && received_value<=60000){
-			parameter_set.motor_base_frequency=((float)received_value/100.0f)*(_2_PI/MOTOR_CTRL_LOOP_FREQ);
+			parameter_set.motor_base_frequency=((float)received_value/100.0f);
 		}
 		break;}
 	case 50:
