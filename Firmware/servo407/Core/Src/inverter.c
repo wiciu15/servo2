@@ -79,7 +79,7 @@ inverter_t inverter={
 		.output_power_active=0.0f,
 		.output_power_apparent=0.0f,
 		.stator_field_speed=0.0f,
-		.DCbus_voltage=66.6f,
+		.DCbus_voltage=0.0f,
 		.IGBT_temp=20.0f,
 		.zerocurrent_ADC_samples_U=0,
 		.zerocurrent_ADC_samples_V=0,
@@ -145,7 +145,7 @@ inverter_t inverter={
 				0.0f,
 				0.0f,
 				0.0f,
-				0.0016f,
+				(1.0f/DEFAULT_CTRL_LOOP_FREQ)*10.0f,
 				0.0f,0.0f,0.0f,0.0f
 		}
 };
@@ -316,6 +316,15 @@ float LowPassFilterA(float Tf,float Ts,float actual_measurement, float * last_fi
 	*last_filtered_value = filtered_value;
 	return filtered_value;
 }
+/**
+ * @brief Limits
+ */
+float constrainf(float number, float min, float max){
+	if(number<min){return min;}
+	else if(number>min && number<max){return number;}
+	else if(number>max){return max;}
+	else{return number;}
+}
 
 /**
   * @brief  Synthesize output voltage with PWM using sinusoidal PWM algorythm
@@ -379,7 +388,6 @@ void output_svpwm(output_voltage_vector_t voltage_vector){
 	// calculate T1 and T2 times in timer units
 	float T1 = _SQRT3*sinf(sector*_PI_3 - angle_el) * voltage_vector_len;
 	float T2 = _SQRT3*sinf(angle_el - (sector-1.0f)*_PI_3) * voltage_vector_len;
-	// idle time none or split in half to get centered PWM
 	float T0 = inverter.duty_cycle_limit - T1 - T2; // modulation_centered around driver->voltage_limit/2
 	// calculate the duty cycles of each PWM driver
 
@@ -422,12 +430,12 @@ void output_svpwm(output_voltage_vector_t voltage_vector){
 	}
 	//dead time and forward drop compensation
 	float offset=(U_sat/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f);
-	if(inverter.I_U>0.0f){inverter.U_U+=offset;}
-	if(inverter.I_U<0.0f){inverter.U_U-=offset;}
-	if(inverter.I_V>0.0f){inverter.U_V+=offset;}
-	if(inverter.I_V<0.0f){inverter.U_V-=offset;}
-	if(inverter.I_W>0.0f){inverter.U_W+=offset;}
-	if(inverter.I_W<0.0f){inverter.U_W-=offset;}
+	if(inverter.I_U>-0.05f){inverter.U_U+=offset/**constrainf(inverter.I_U/0.03f,0.0f,1.0f)*/;}
+	if(inverter.I_U<0.05f){inverter.U_U-=offset/**constrainf(-inverter.I_U/0.03f,0.0f,1.0f)*/;}
+	if(inverter.I_V>-0.05f){inverter.U_V+=offset/**constrainf(inverter.I_V/0.03f,0.0f,1.0f)*/;}
+	if(inverter.I_V<0.05f){inverter.U_V-=offset/**constrainf(-inverter.I_V/0.03f,0.0f,1.0f)*/;}
+	if(inverter.I_W>-0.05f){inverter.U_W+=offset/**constrainf(inverter.I_W/0.03f,0.0f,1.0f)*/;}
+	if(inverter.I_W<0.05f){inverter.U_W-=offset/**constrainf(-inverter.I_W/0.03f,0.0f,1.0f)*/;}
 
 	if(inverter.U_U>inverter.duty_cycle_limit){inverter.U_U=inverter.duty_cycle_limit;}
 	if(inverter.U_V>inverter.duty_cycle_limit){inverter.U_V=inverter.duty_cycle_limit;}
@@ -576,6 +584,8 @@ void motor_control_loop(void){
 	}
 	inverter.speed_measurement_loop_i++;
 	inverter.filtered_rotor_speed=LowPassFilter(parameter_set.speed_filter_ts,inverter.rotor_speed, &inverter.last_rotor_speed);
+
+	//overspeed detection
 	if(inverter.filtered_rotor_speed>parameter_set.motor_max_speed +400.0f || inverter.filtered_rotor_speed<(-parameter_set.motor_max_speed-400.0f)){
 		inverter_error_trip(overspeed);
 	}
@@ -630,7 +640,12 @@ void motor_control_loop(void){
 		inverter.output_voltage_vector.U_Alpha=cosf(inverter.stator_electric_angle)*inverter.output_voltage;
 		inverter.output_voltage_vector.U_Beta=sinf(inverter.stator_electric_angle)*inverter.output_voltage;
 	}else{
+		//calculate output voltage for preview
 		inverter.output_voltage=hypotf(inverter.output_voltage_vector.U_Alpha,inverter.output_voltage_vector.U_Beta);
+	}
+	//calculate stator field angle in foc mode to calculate torque angle correctly
+	if(inverter.control_mode==foc){
+		inverter.stator_electric_angle=atan2f(-inverter.output_voltage_vector.U_Beta,-inverter.output_voltage_vector.U_Alpha)+_PI+0.00000001f;
 	}
 
 	//synthesize PWM times from stator voltage vector
@@ -641,8 +656,6 @@ void motor_control_loop(void){
 	if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){
 		mitsubishi_encoder_send_command();
 	}
-
-
 
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 }
