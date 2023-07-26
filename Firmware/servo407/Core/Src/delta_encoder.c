@@ -10,7 +10,7 @@
 #include "inverter.h"
 #include <string.h>
 
-extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart1;
 
 delta_encoder_data_t delta_encoder_data={
 		.encoder_command=0x32,
@@ -19,14 +19,14 @@ delta_encoder_data_t delta_encoder_data={
 };
 
 void delta_encoder_init(void){
-	HAL_UART_DeInit(&huart2);
-	huart2.Init.BaudRate=2000000;
-	HAL_UART_Init(&huart2);
+	HAL_UART_DeInit(&huart1);
+	huart1.Init.BaudRate=2000000;
+	HAL_UART_Init(&huart1);
 }
 
 void delta_encoder_read_position(){
-	if(USART_fast_transmit_RS485(&huart2, delta_encoder_data.encoder_command)!=HAL_OK){inverter_error_trip(internal_software);}
-	if(HAL_UART_Receive_DMA(&huart2, delta_encoder_data.motor_response, 5)!=HAL_OK){//start listening for response, it will be automatically copied by DMA after reception
+	if(USART_fast_transmit_RS485(&huart1, delta_encoder_data.encoder_command)!=HAL_OK){inverter_error_trip(internal_software);}
+	if(HAL_UART_Receive_DMA(&huart1, delta_encoder_data.motor_response, 5)!=HAL_OK){//start listening for response, it will be automatically copied by DMA after reception
 		delta_encoder_data.communication_error_count++;
 		//if(delta_encoder_data.communication_error_count>10){inverter_error_trip(encoder_error_communication);}
 	}else{delta_encoder_data.communication_error_count=0;}

@@ -169,6 +169,7 @@ void inverter_setup(void){
 	if(parameter_set.motor_feedback_type==tamagawa_encoder && tamagawa_encoder_data.encoder_state==encoder_eeprom_reading){tamagawa_encoder_motor_identification();	}
 	if(parameter_set.motor_feedback_type == mitsubishi_encoder && mitsubishi_encoder_data.encoder_state==encoder_eeprom_reading){mitsubishi_motor_identification();}
 	if(parameter_set.motor_feedback_type == abz_encoder){HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);} //enable abz encoder inputs
+	if(parameter_set.motor_feedback_type == delta_encoder && delta_encoder_data.encoder_state== encoder_eeprom_reading){delta_encoder_init();}
 	HAL_TIM_Base_Start_IT(&htim5); //start main motor control loop
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); //start braking chopper
 
@@ -225,6 +226,9 @@ void inverter_disable(){
 	inverter.speed_controller_data.last_error=0.0f;
 	inverter.speed_controller_data.last_integral=0.0f;
 	inverter.speed_controller_data.last_output=0.0f;
+
+	inverter.torque_current_setpoint=0.0f;
+	inverter.field_current_setpoint=0.0f;
 	//HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);
 }
 
@@ -563,6 +567,7 @@ void motor_control_loop(void){
 	if(parameter_set.motor_feedback_type==mitsubishi_encoder){mitsubishi_encoder_process_data();}
 	if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_read_position();}
 	if(parameter_set.motor_feedback_type==panasonic_minas_encoder){panasonic_encoder_read_position();}
+	if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
 
 	//calculate torque angle
 	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}

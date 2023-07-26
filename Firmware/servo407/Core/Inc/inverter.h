@@ -28,6 +28,7 @@
 #include "tamagawa_encoder.h"
 #include "panasonic_encoder.h"
 #include "abz_encoder.h"
+#include "delta_encoder.h"
 
 //list of possible inverter errors that need to inhibit output and trip the inverter
 typedef enum {no_error,
