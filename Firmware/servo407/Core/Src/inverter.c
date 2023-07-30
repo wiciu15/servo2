@@ -43,15 +43,15 @@ parameter_set_t parameter_set={
 		.encoder_polarity=1,
 
 
-		.current_filter_ts=0.001f,
-		.torque_current_ctrl_proportional_gain=8.0f, //gain in V/A
-		.torque_current_ctrl_integral_gain=2000.0f,
-		.field_current_ctrl_proportional_gain=8.0f,
-		.field_current_ctrl_integral_gain=2000.0f,
+		.current_filter_ts=0.0003f,
+		.torque_current_ctrl_proportional_gain=18.0f, //gain in V/A
+		.torque_current_ctrl_integral_gain=3000.0f,
+		.field_current_ctrl_proportional_gain=18.0f,
+		.field_current_ctrl_integral_gain=3000.0f,
 
-		.speed_filter_ts=0.01f,
-		.speed_controller_proportional_gain=0.015f,
-		.speed_controller_integral_gain=0.3f,
+		.speed_filter_ts=0.002f,
+		.speed_controller_proportional_gain=0.008f,
+		.speed_controller_integral_gain=0.4f,
 		.speed_controller_output_torque_limit=1.0f, //limit torque, Iq is the output so the calcualtion is needed to convert N/m to A
 		.speed_controller_integral_limit=1.0f //1.0 is for example, valid iq current gets copied from motor max current
 
@@ -506,19 +506,16 @@ void motor_control_loop(void){
 	inverter.id_current_controller_data.integral_gain=parameter_set.field_current_ctrl_integral_gain;
 	inverter.id_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
 	inverter.id_current_controller_data.output_limit=inverter.DCbus_voltage;
+
 	inverter.iq_current_controller_data.proportional_gain=parameter_set.torque_current_ctrl_proportional_gain;
 	inverter.iq_current_controller_data.integral_gain=parameter_set.torque_current_ctrl_integral_gain;
-	if(inverter.DCbus_voltage>parameter_set.motor_max_voltage){
-		inverter.iq_current_controller_data.antiwindup_limit=parameter_set.motor_max_voltage;
-		inverter.iq_current_controller_data.output_limit=parameter_set.motor_max_voltage;
-	}else{
-		inverter.iq_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
-		inverter.iq_current_controller_data.output_limit=inverter.DCbus_voltage;
-	}
+	inverter.iq_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
+	inverter.iq_current_controller_data.output_limit=inverter.DCbus_voltage;
+
 	inverter.speed_controller_data.proportional_gain=parameter_set.speed_controller_proportional_gain;
 	inverter.speed_controller_data.integral_gain=parameter_set.speed_controller_integral_gain;
-	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current*0.9f;
-	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current*0.9f;
+	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current;
+	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current;
 
 	//check if everything is fine with HOT ADC and reset it if not
 	if(HOT_ADC_read()!=HAL_OK){
