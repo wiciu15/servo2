@@ -1261,32 +1261,31 @@ void StartTaskModbusUSB(void *argument)
 
 /* USER CODE BEGIN Header_uiTaskStart */
 /**
-* @brief Function implementing the uiTask thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the uiTask thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_uiTaskStart */
 void uiTaskStart(void *argument)
 {
-  /* USER CODE BEGIN uiTaskStart */
+	/* USER CODE BEGIN uiTaskStart */
 	osTimerStart(LEDTimerHandle, 100);
 	display_init();
 	osThreadResume(taskModbusUSBHandle);//start usb communication task
 	osThreadResume(defaultTaskHandle); //start motor control
 	osThreadSuspend(uiTaskHandle); //draw startup screen and wait for default task to initialize
-  /* Infinite loop */
-  for(;;)
-  {
-	  draw();
-	  osDelay(200);
-  }
-  /* USER CODE END uiTaskStart */
+	/* Infinite loop */
+	for(;;)
+	{
+		draw();
+	}
+	/* USER CODE END uiTaskStart */
 }
 
 /* timerSoftstartCallback function */
 void timerSoftstartCallback(void *argument)
 {
-  /* USER CODE BEGIN timerSoftstartCallback */
+	/* USER CODE BEGIN timerSoftstartCallback */
 	if(inverter.DCbus_voltage>=inverter.undervoltage_limit+10.0f){
 		if(inverter.error<=undervoltage_condition){inverter.error=0;}
 		if(inverter.state==inhibit){inverter.state=stop;}
