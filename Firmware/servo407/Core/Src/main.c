@@ -239,8 +239,6 @@ int main(void)
   uiTaskHandle = osThreadNew(uiTaskStart, NULL, &uiTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  osThreadSuspend(defaultTaskHandle);
-  osThreadSuspend(taskModbusUSBHandle);
   /* adddefaultTaskHandle ... */
   /* USER CODE END RTOS_THREADS */
 
@@ -1221,11 +1219,12 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi){
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
-  /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
-  /* USER CODE BEGIN 5 */
+	/* init code for USB_DEVICE */
+	MX_USB_DEVICE_Init();
+	/* USER CODE BEGIN 5 */
+	osThreadSuspend(taskModbusUSBHandle);//start usb communication task
 	inverter_setup();
-	osDelay(20);
+	osThreadResume(taskModbusUSBHandle);//start usb communication task
 	osThreadResume(uiTaskHandle);
 	/* Infinite loop */
 	for(;;)
@@ -1233,13 +1232,13 @@ void StartDefaultTask(void *argument)
 		DCBus_voltage_check();
 		osDelay(1);
 	}
-  /* USER CODE END 5 */
+	/* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_StartTaskModbusUSB */
 /**
-* @brief Function implementing the taskModbusUSB thread.
-* @param argument: Not used
+ * @brief Function implementing the taskModbusUSB thread.
+ * @param argument: Not used
 * @retval None
 */
 /* USER CODE END Header_StartTaskModbusUSB */
@@ -1248,13 +1247,12 @@ void StartTaskModbusUSB(void *argument)
   /* USER CODE BEGIN StartTaskModbusUSB */
 	//
 	ptrModbusUSBinstance=calloc(1,sizeof(modbus_instance_t));
-
 	ModbusUSB_init(ptrModbusUSBinstance);
   /* Infinite loop */
   for(;;)
   {
 	process_modbus_command(ptrModbusUSBinstance);
-    osDelay(1);
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
   }
   /* USER CODE END StartTaskModbusUSB */
 }
@@ -1271,9 +1269,7 @@ void uiTaskStart(void *argument)
 	/* USER CODE BEGIN uiTaskStart */
 	osTimerStart(LEDTimerHandle, 100);
 	display_init();
-	osThreadResume(taskModbusUSBHandle);//start usb communication task
-	osThreadResume(defaultTaskHandle); //start motor control
-	osThreadSuspend(uiTaskHandle); //draw startup screen and wait for default task to initialize
+	osThreadSuspend(uiTaskHandle);
 	/* Infinite loop */
 	for(;;)
 	{
@@ -1291,41 +1287,47 @@ void timerSoftstartCallback(void *argument)
 		if(inverter.state==inhibit){inverter.state=stop;}
 		HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);
 	}
-  /* USER CODE END timerSoftstartCallback */
+	/* USER CODE END timerSoftstartCallback */
 }
 
 /* LEDTimerCallback function */
 void LEDTimerCallback(void *argument)
 {
-  /* USER CODE BEGIN LEDTimerCallback */
-	switch(inverter.state){
-	case run: //status on error off
-		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,1);
-		HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
-		break;
-	case stop: //status blink error off
-		HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
-		HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
-		break;
-	case inhibit: //status off error blink
-		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
-		HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
-		break;
-	case trip: //status off error on
-		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
-		HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 1);
-		break;
-	default: //both on
+	/* USER CODE BEGIN LEDTimerCallback */
+	if(HAL_TIM_Base_GetState(&htim5)==HAL_TIM_STATE_BUSY){
+		switch(inverter.state){
+		case run: //status on error off
+			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,1);
+			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
+			break;
+		case stop: //status blink error off
+			HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
+			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
+			break;
+		case inhibit: //status off error blink
+			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
+			HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
+			break;
+		case trip: //status off error on
+			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
+			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 1);
+			break;
+		default: //both on
+			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
+			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 1);
+			break;
+		}
+	}else{
+		//both on if motor control loop is not working
 		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
 		HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 1);
-		break;
 	}
-  /* USER CODE END LEDTimerCallback */
+	/* USER CODE END LEDTimerCallback */
 }
 
 /**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM11 interrupt took place, inside
+ * @brief  Period elapsed callback in non blocking mode
+ * @note   This function is called  when TIM11 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle

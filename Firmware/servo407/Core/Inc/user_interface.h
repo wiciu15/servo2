@@ -21,6 +21,7 @@ typedef struct _buttons_state_t{
 	uint32_t pressed_time [4]; //array holding how long each button has been pressed so far
 }buttons_state_t;
 
+extern buttons_state_t button_state;
 
 void display_init(void);
 void draw(void);

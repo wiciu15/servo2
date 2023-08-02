@@ -9,6 +9,7 @@
 #define INC_MENU_H_
 
 #include "main.h"
+#include "parameter_list.h"
 
 #define LCD_ROWS 4
 
@@ -31,6 +32,12 @@ typedef struct _menu_ctx_t{
 }menu_ctx_t;
 
 extern menu_ctx_t menu_ctx;
+
+extern void (*key_back_func)(void);
+extern void (*key_next_func)(void);
+extern void (*key_prev_func)(void);
+extern void (*key_ent_func)(void);
+extern void (*refresh_func)(void);
 
 void menu_refresh(void);
 void menu_next(void);

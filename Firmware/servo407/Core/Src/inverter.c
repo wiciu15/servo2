@@ -25,6 +25,7 @@ extern osTimerId_t timerSoftstartHandle;
 //DEFAULT PARAMETER SET FROM DRIVE ROM used to set default parameter set
 parameter_set_t parameter_set={
 		.software_version=SOFTWARE_VERSION,
+		.control_mode=u_f,
 		.motor_max_current=10.5f, //14.3 according to datasheet
 		.motor_nominal_current=6.8f,
 		.motor_pole_pairs=4, //4 for abb motor 5 for bch and mitsubishi hf-kn43
@@ -244,6 +245,11 @@ void inverter_error_trip(uint8_t error_number){
 	}
 	if(error_number==undervoltage_condition && inverter.error==no_error){inverter.state=inhibit;}else{inverter.state=trip;}
 	inverter.error|=1<<(error_number-1);
+}
+
+HAL_StatusTypeDef inverter_error_reset(void){
+	//@TODO: implement non-resettable errors
+	if(inverter.error!=undervoltage_condition){inverter.error=no_error;inverter.state=stop;return HAL_OK;}else{return HAL_ERROR;}
 }
 
 HAL_StatusTypeDef HOT_ADC_read(){
@@ -501,6 +507,8 @@ void DCBus_voltage_check(void){
  */
 void motor_control_loop(void){
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
+
+	inverter.control_mode=(control_mode_t)parameter_set.control_mode;
 
 	inverter.id_current_controller_data.proportional_gain=parameter_set.field_current_ctrl_proportional_gain;
 	inverter.id_current_controller_data.integral_gain=parameter_set.field_current_ctrl_integral_gain;

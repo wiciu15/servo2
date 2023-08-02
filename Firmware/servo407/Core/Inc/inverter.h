@@ -135,6 +135,7 @@ void set_ctrl_loop_frequency(uint16_t frequency);
 void inverter_enable(void);
 void inverter_disable(void);
 void inverter_error_trip(uint8_t error_number);
+HAL_StatusTypeDef inverter_error_reset(void);
 HAL_StatusTypeDef HOT_ADC_read(void);
 void HOT_ADC_RX_Cplt(void);
 void HOT_ADC_calculate_avg(void);

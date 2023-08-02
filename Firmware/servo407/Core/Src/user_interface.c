@@ -16,7 +16,10 @@
 // http://en.radzio.dxp.pl/bitmap_converter/
 //------------------------------------------------------------------------------
 const unsigned char splash [];
-buttons_state_t button_state;
+buttons_state_t button_state={
+		.pressed_time={0},
+		.prev_buttons_state=0x0F
+};
 
 void display_init(){
 	ssd1306_Init();
@@ -39,16 +42,16 @@ void draw(){
 	char statusString [24];
 	switch(inverter.state){
 	case run:
-		if(inverter.control_mode==foc){sprintf(statusString,"RUN %.0fRPM %.1fA %.0f C",inverter.filtered_rotor_speed,inverter.I_RMS,inverter.IGBT_temp);}
-		else{sprintf(statusString,"RUN %.1fHz %.1fA %.0f C",inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq),inverter.I_RMS,inverter.IGBT_temp);}
+		if(inverter.control_mode==foc){sprintf(statusString,"RUN %+5.0fRPM %.1fA %.0fC",inverter.filtered_rotor_speed,inverter.I_RMS,inverter.IGBT_temp);}
+		else{sprintf(statusString,"RUN %+4.1fHz %.1fA %.0fC",inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq),inverter.I_RMS,inverter.IGBT_temp);}
 		break;
 	case stop:
-		sprintf(statusString,"RDY %.0fRPM %.0fV %.0f C",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);break;
+		sprintf(statusString,"RDY %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);break;
 	case inhibit:
-		sprintf(statusString,"UVL %.0fRPM %.0fV %.0f C",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);break;
+		sprintf(statusString,"UVL %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);break;
 	case trip:
 		//@TODO: implement error number decoding to show on display
-		sprintf(statusString,"ERR %.0fRPM %.0fV %.0f C",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);
+		sprintf(statusString,"ERR %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);
 		break;
 	}
 	ssd1306_SetCursor(2	, 0);
@@ -56,7 +59,7 @@ void draw(){
 
 	//draw menu
 	process_buttons_state();
-	menu_refresh();
+	refresh_func();
 	//update screen
 	ssd1306_UpdateScreen();
 	osDelay(SCREEN_REFRESH_RATE_MS);
@@ -69,16 +72,21 @@ void process_buttons_state(){
 			HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin)<<3;
 	if(actual_buttons_state!=button_state.prev_buttons_state){
 		button_state.pressed_time[esc_key]=0;button_state.pressed_time[up_key]=0;button_state.pressed_time[down_key]=0;button_state.pressed_time[enter_key]=0;
+		if(!HAL_GPIO_ReadPin(BTN_BACK_GPIO_Port, BTN_BACK_Pin)){if(key_back_func)(*key_back_func)();}
+		if(!HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin)){if(key_next_func)(*key_next_func)();}
+		if(!HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin)){if(key_prev_func)(*key_prev_func)();}
+		if(!HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin)){if(key_ent_func)(*key_ent_func)();}
 	}
-	if(!HAL_GPIO_ReadPin(BTN_BACK_GPIO_Port, BTN_BACK_Pin))button_state.pressed_time[esc_key]+=50;
-	if(!HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin))button_state.pressed_time[up_key]+=50;
-	if(!HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin))button_state.pressed_time[down_key]+=50;
-	if(!HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin))button_state.pressed_time[enter_key]+=50;
+	if(!HAL_GPIO_ReadPin(BTN_BACK_GPIO_Port, BTN_BACK_Pin))button_state.pressed_time[esc_key]+=SCREEN_REFRESH_RATE_MS;
+	if(!HAL_GPIO_ReadPin(BTN_UP_GPIO_Port, BTN_UP_Pin))button_state.pressed_time[up_key]+=SCREEN_REFRESH_RATE_MS;
+	if(!HAL_GPIO_ReadPin(BTN_DOWN_GPIO_Port, BTN_DOWN_Pin))button_state.pressed_time[down_key]+=SCREEN_REFRESH_RATE_MS;
+	if(!HAL_GPIO_ReadPin(BTN_ENT_GPIO_Port, BTN_ENT_Pin))button_state.pressed_time[enter_key]+=SCREEN_REFRESH_RATE_MS;
 
-	if(button_state.pressed_time[esc_key]>=100)menu_back();
-	if(button_state.pressed_time[up_key]>=100)menu_next();
-	if(button_state.pressed_time[down_key]>=100)menu_prev();
-	if(button_state.pressed_time[enter_key]>=100)menu_enter();
+	//@TODO: implement long press
+	//if(button_state.pressed_time[esc_key]>=1500)menu_long_back();button_state.pressed_time[esc_key]=0;
+	if(button_state.pressed_time[up_key]>=1000){if(key_next_func)(*key_next_func)();}
+	if(button_state.pressed_time[down_key]>=1000){if(key_prev_func)(*key_prev_func)();}
+	//if(button_state.pressed_time[enter_key]>=1500)menu_long_enter();button_state.pressed_time[enter_key]=0;
 
 	button_state.prev_buttons_state = actual_buttons_state;
 

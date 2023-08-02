@@ -12,8 +12,10 @@
 #include "inverter.h"
 #include "usbd_cdc_if.h"
 #include "eeprom.h"
+#include "cmsis_os.h"
 
-modbus_instance_t * ptrModbusUSBinstance;
+modbus_instance_t * ptrModbusUSBinstance=NULL;
+extern osThreadId_t taskModbusUSBHandle;
 
 uint16_t modbus_protocol_read(uint32_t la){
 
@@ -77,14 +79,14 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	switch (local_address){
 
 	case 2://error register
-		{if(value==0){inverter.error = no_error;inverter.state=stop;}break; //acknowledge error
+		{if(value==0){inverter_error_reset();}break; //acknowledge error
 		break;}
 	case 3: //control register
 		{switch(value){
 			case 0:
-				inverter_disable();inverter.state=stop;break;
+				inverter_disable();break;
 			case 1:
-				inverter.state=run;inverter_enable();break;
+				inverter_enable();break;
 			case 3:
 				inverter_error_trip(external_comm);
 			default:
@@ -93,7 +95,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	break;}
 
 	case 5: //operation mode register
-	{if(value<=3){inverter.control_mode=value;}
+	{if(value<=3){parameter_set.control_mode=value;}
 	break;
 	}
 
@@ -312,7 +314,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 		//if not handled inside switch, then read-only parameter
 		break;
 	}
-	if(local_address>=20){
+	if(local_address>=20 || local_address==5){
 		//@TODO: instead of writing on each parameter change give user option to write whole parameter set on demand
 		if(save_parameter_set_to_eeprom()!=HAL_OK){
 			inverter_error_trip(eeprom_error);
@@ -365,6 +367,7 @@ void ModbusUSB_init(modbus_instance_t* mbus_instance){
 }
 
 void modbus_process_new_data_to_fifo(modbus_instance_t* mbus_instance, uint8_t * buffer,uint32_t Size){
+	if(mbus_instance!=NULL){ //break if modbus not initialized yet
 		mbus_flush(mbus_instance->modbus);
 		/* start the DMA again */
 		//HAL_UARTEx_ReceiveToIdle_DMA(&huart1, (uint8_t *) UART_RX_buf, sizeof(UART_RX_buf));
@@ -394,10 +397,8 @@ void modbus_process_new_data_to_fifo(modbus_instance_t* mbus_instance, uint8_t *
 			memcpy ((uint8_t *)mbus_instance->RX_FIFO+mbus_instance->fifo_oldpos, buffer, Size);
 			mbus_instance->fifo_newpos = Size+mbus_instance->fifo_oldpos;
 		}
-
-
-
-
+		vTaskNotifyGiveFromISR(taskModbusUSBHandle, NULL);
+	}
 }
 
 void process_modbus_command(modbus_instance_t* mbus_instance){
@@ -408,5 +409,4 @@ void process_modbus_command(modbus_instance_t* mbus_instance){
 			mbus_instance->fifo_read_pos=0;
 		}
 	}
-
 }
