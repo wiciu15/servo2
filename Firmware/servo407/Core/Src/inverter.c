@@ -44,11 +44,11 @@ parameter_set_t parameter_set={
 		.encoder_polarity=1,
 
 
-		.current_filter_ts=0.0003f,
-		.torque_current_ctrl_proportional_gain=18.0f, //gain in V/A
-		.torque_current_ctrl_integral_gain=3000.0f,
-		.field_current_ctrl_proportional_gain=18.0f,
-		.field_current_ctrl_integral_gain=3000.0f,
+		.current_filter_ts=0.0001f,
+		.torque_current_ctrl_proportional_gain=11.0f, //gain in V/A
+		.torque_current_ctrl_integral_gain=1000.0f,
+		.field_current_ctrl_proportional_gain=11.0f,
+		.field_current_ctrl_integral_gain=1000.0f,
 
 		.speed_filter_ts=0.002f,
 		.speed_controller_proportional_gain=0.008f,
