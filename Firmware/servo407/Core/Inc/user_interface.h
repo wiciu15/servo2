@@ -10,6 +10,7 @@
 
 #include "ssd1306.h"
 #include "ssd1306_tests.h"
+#include "stdio.h"
 
 #define SCREEN_REFRESH_RATE_MS 50
 

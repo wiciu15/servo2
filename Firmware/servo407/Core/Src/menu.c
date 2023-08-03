@@ -8,7 +8,6 @@
 #include "user_interface.h"
 #include "menu.h"
 #include "ssd1306.h"
-#include <stdio.h>
 
 void (*key_back_func)(void) = &menu_back;
 void (*key_next_func)(void) = &menu_next;
@@ -96,7 +95,7 @@ void menu_refresh(void) {
 
 	for (i = 14; i < 56; i+=11) {
 
-		ssd1306_SetCursor(0	, i);
+		ssd1306_SetCursor(2	, i);
 		if (temp == menu_ctx.currentPointer)ssd1306_WriteString(temp->name, Font_7x10,0);
 		else ssd1306_WriteString(temp->name, Font_7x10,1);
 
@@ -233,7 +232,7 @@ void menu_jog_refresh(){
 		key_ent_func = menu_jog_enter;
 		ssd1306_SetCursor(36, 20);
 		ssd1306_WriteString("JOG MENU", Font_7x10,0);
-		ssd1306_SetCursor(0, 32);
+		ssd1306_SetCursor(2, 32);
 		char  setpointString [24];
 		sprintf(setpointString,"Set speed: %.0fRPM",inverter.speed_setpoint);
 		ssd1306_WriteString(setpointString, Font_6x8, 1);
@@ -252,6 +251,20 @@ void menu_jog_callback(){
 	menu_jog_refresh();
 }
 
+//this function is used to make corrections to values, account for type different than float or values depending on inverter actual state
+float monitor_get_value(void* ptr){
+	float returnValue;
+	if(ptr==&inverter.speed_setpoint){
+		if(inverter.control_mode!=foc)returnValue=(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq));
+		else {returnValue=*(float*)ptr;}
+	}
+	else if(ptr==&inverter.stator_electric_angle)returnValue=(*(float*)ptr)*(180.0f/_PI);
+	else if(ptr==&inverter.torque_angle)returnValue=(*(float*)ptr)*(180.0f/_PI);
+	else if(ptr==&inverter.encoder_raw_position)returnValue=(float)(*(uint16_t*)ptr);
+	else returnValue = *(float*)ptr;
+
+	return returnValue;
+}
 void menu_monitor_back(){
 	key_next_func = menu_next;
 	key_prev_func = menu_prev;
@@ -262,11 +275,11 @@ void menu_monitor_back(){
 }
 
 void menu_monitor_next(){
-
+if(monitor_page*5<monitor_list_size)monitor_page++;
 }
 
 void menu_monitor_prev(){
-
+if(monitor_page>0)monitor_page--;
 }
 
 void menu_monitor_enter(){
@@ -277,17 +290,12 @@ void menu_monitor_enter(){
 void menu_monitor_refresh(){
 	for(uint16_t i=monitor_page*5;i<monitor_page*5+5;i++){
 		if(i>=monitor_list_size)break; //check if monitor list not ended
-		ssd1306_SetCursor(0, (i*9)+14);
+		ssd1306_SetCursor(2, ((i%5)*9)+14);
+		ssd1306_WriteString(monitor_list[i].shortName, Font_6x8, 1);
+		ssd1306_SetCursor(70, ((i%5)*9)+14);
+		float value = monitor_get_value(monitor_list[i].ptrToActualValue);
 		char  stringbuf [30];
-		/*for(uint8_t j=0;j<14;j++){ //max 16 characters in name
-			if(monitor_list[i].name[j]==0){ stringbuf[j]=' ';break;}else{		//check if string not ended
-				stringbuf[j]=monitor_list[i].name[j];
-			}
-		}*/
-		char name [11];
-		for(uint8_t j=0;j<11;j++){name[j]=monitor_list[i].name[j];if(name[j]==0){break;}}
-		float value = *(float*)monitor_list[i].ptrToActualValue;
-		sprintf(stringbuf,"%s %3.1f%s",name,value,monitor_list[i].unit);
+		sprintf(stringbuf,"%6.*f%s",(int)monitor_list[i].precision,value,monitor_list[i].unit);
 		ssd1306_WriteString(stringbuf, Font_6x8, 1);
 	}
 }

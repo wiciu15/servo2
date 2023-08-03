@@ -13,10 +13,11 @@
 typedef struct _parameter_t{
 	uint16_t numberModbus;
 	uint16_t numberCAN;
-	char name [18];
+	char name [24];
+	char shortName [10];
 	void * ptrToActualValue;
 	char description[40];
-	uint8_t WriteAllowed;
+	uint8_t WriteAllowed; //0-not allowed, 1-allowed during stop, 2-allowed
 	uint8_t precision;
 	char unit [3];
 	float defaultValue;
