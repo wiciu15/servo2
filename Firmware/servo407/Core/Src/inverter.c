@@ -12,6 +12,7 @@
 #include <math.h>
 #include "pid.h"
 #include "cmsis_os.h"
+#include "arm_math.h"
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
@@ -301,14 +302,14 @@ void clarke_transform(float I_U,float I_V,float * I_alpha,float * I_beta){
 	* I_beta=(0.5773502f * I_U) + (1.1547005f * I_V);
 }
 void park_transform(float I_alpha,float I_beta,float angle,float * I_d,float * I_q){
-	*I_d = (I_alpha * cosf(angle)) + (I_beta * sinf(angle));
-	*I_q = (I_alpha * sinf(angle)*(-1)) + (I_beta * cosf(angle));
+	*I_d = (I_alpha * arm_cos_f32(angle)) + (I_beta * arm_sin_f32(angle));
+	*I_q = (I_alpha * arm_sin_f32(angle)*(-1)) + (I_beta * arm_cos_f32(angle));
 }
 
 
 void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float * U_beta){
-	*U_alpha= (U_d * cosf(angle)) - (U_q * sinf(angle));
-	*U_beta = (U_d * sinf(angle)) + (U_q * cosf(angle));
+	*U_alpha= (U_d * arm_cos_f32(angle)) - (U_q * arm_sin_f32(angle));
+	*U_beta = (U_d * arm_sin_f32(angle)) + (U_q * arm_cos_f32(angle));
 }
 
 //Tf - filter time constant in seconds
@@ -396,8 +397,8 @@ void output_svpwm(output_voltage_vector_t voltage_vector){
 	//get sector of voltage
 	uint8_t sector = floor(angle_el / _PI_3) + 1;
 	// calculate T1 and T2 times in timer units
-	float T1 = _SQRT3*sinf(sector*_PI_3 - angle_el) * voltage_vector_len;
-	float T2 = _SQRT3*sinf(angle_el - (sector-1.0f)*_PI_3) * voltage_vector_len;
+	float T1 = _SQRT3*arm_sin_f32(sector*_PI_3 - angle_el) * voltage_vector_len;
+	float T2 = _SQRT3*arm_sin_f32(angle_el - (sector-1.0f)*_PI_3) * voltage_vector_len;
 	float T0 = inverter.duty_cycle_limit - T1 - T2; // modulation_centered around driver->voltage_limit/2
 	// calculate the duty cycles of each PWM driver
 
@@ -558,21 +559,18 @@ void motor_control_loop(void){
 
 	//check IGBT temperature
 	if(inverter.IGBT_temp>inverter.igbt_overtemperature_limit){inverter_error_trip(inverter_overtemperature);}
-
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 	//run RMS current calculation loop
 	RMS_current_calculation_loop();
 	//calculate current vector
 	clarke_transform(inverter.I_U, inverter.I_V, &inverter.I_alpha, &inverter.I_beta);
 	//these methods of calculating power are not very reliable or accurate
-	inverter.output_power_apparent=inverter.output_voltage*hypotf(inverter.I_alpha,inverter.I_beta);
-	inverter.output_power_active=inverter.output_voltage*inverter.I_q_filtered;
-
+	//inverter.output_power_apparent=inverter.output_voltage*hypotf(inverter.I_alpha,inverter.I_beta);
+	//inverter.output_power_active=inverter.output_voltage*inverter.I_q_filtered;
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 	//calculate/get rotor electric angle from encoder
 	if(parameter_set.motor_feedback_type==abz_encoder){abz_encoder_calculate_abs_position();}
 	if(parameter_set.motor_feedback_type==mitsubishi_encoder){mitsubishi_encoder_process_data();}
-	if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_read_position();}
-	if(parameter_set.motor_feedback_type==panasonic_minas_encoder){panasonic_encoder_read_position();}
-	if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
 
 	//calculate torque angle
 	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}
@@ -599,7 +597,7 @@ void motor_control_loop(void){
 	if(inverter.filtered_rotor_speed>parameter_set.motor_max_speed +400.0f || inverter.filtered_rotor_speed<(-parameter_set.motor_max_speed-400.0f)){
 		inverter_error_trip(overspeed);
 	}
-
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 	//increment stator electric angle based on set frequency if not in foc mode
 	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current ){
 		if(inverter.state==run){inverter.stator_electric_angle+=inverter.stator_field_speed;}
@@ -618,7 +616,7 @@ void motor_control_loop(void){
 	}else{
 		park_transform(inverter.I_alpha, inverter.I_beta, inverter.rotor_electric_angle, &inverter.I_d, &inverter.I_q);
 	}
-
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 
 	//low pass filter of current vector values
 	inverter.I_d_filtered = LowPassFilter(parameter_set.current_filter_ts, inverter.I_d, &inverter.I_d_last);
@@ -644,29 +642,37 @@ void motor_control_loop(void){
 		inv_park_transform(inverter.U_d, inverter.U_q,  inverter.rotor_electric_angle, &inverter.output_voltage_vector.U_Alpha, &inverter.output_voltage_vector.U_Beta);
 	}
 
-
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 	//calculate voltage vectors if manual or u/f
 	if(inverter.control_mode==manual || inverter.control_mode==u_f){
-		inverter.output_voltage_vector.U_Alpha=cosf(inverter.stator_electric_angle)*inverter.output_voltage;
-		inverter.output_voltage_vector.U_Beta=sinf(inverter.stator_electric_angle)*inverter.output_voltage;
+		inverter.output_voltage_vector.U_Alpha=arm_cos_f32(inverter.stator_electric_angle)*inverter.output_voltage;
+		inverter.output_voltage_vector.U_Beta=arm_sin_f32(inverter.stator_electric_angle)*inverter.output_voltage;
 	}else{
 		//calculate output voltage for preview
 		inverter.output_voltage=hypotf(inverter.output_voltage_vector.U_Alpha,inverter.output_voltage_vector.U_Beta);
 	}
 	//calculate stator field angle in foc mode to calculate torque angle correctly
 	if(inverter.control_mode==foc){
-		inverter.stator_electric_angle=atan2f(-inverter.output_voltage_vector.U_Beta,-inverter.output_voltage_vector.U_Alpha)+_PI+0.00000001f;
+		arm_atan2_f32(-inverter.output_voltage_vector.U_Beta,-inverter.output_voltage_vector.U_Alpha,&inverter.stator_electric_angle);
+		inverter.stator_electric_angle+=_PI+0.00000001f;
 	}
 
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 	//synthesize PWM times from stator voltage vector
 	output_svpwm(inverter.output_voltage_vector);
 	//output_sine_pwm(inverter.output_voltage_vector);
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 
 	//start data tansaction with encoder
+		if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_read_position();}
+		if(parameter_set.motor_feedback_type==panasonic_minas_encoder){panasonic_encoder_read_position();}
+		if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
+
 	if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){
 		mitsubishi_encoder_send_command();
 	}
 
+	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 }
 
