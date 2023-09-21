@@ -11,7 +11,7 @@
 #define SOFTWARE_VERSION 201
 
 #define INVERTER_OVERCURRENT_TRIP_LEVEL 10.0f  //overcurrrent trip setting level in Amperes
-#define ADC_SAMPLES_PER_AMP 65.0f //number of ADC samples read for 1A of phase current
+#define ADC_SAMPLES_PER_AMP 60.0f //number of ADC samples read for 1A of phase current
 #define CURRENT_RMS_SAMPLING_COUNT 500 //(2*pwm frequency)/this define=rms current sampling frequency, for 500 = 32 calculations per second
 #define DEFAULT_CTRL_LOOP_FREQ 8000
 

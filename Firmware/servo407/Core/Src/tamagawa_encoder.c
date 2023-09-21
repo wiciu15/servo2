@@ -30,13 +30,14 @@ tamagawa_encoder_data_t tamagawa_encoder_data={
 		.communication_error_count=0
 };
 
-void tamagawa_encoder_read_position(void){
+void tamagawa_encoder_request_position(void){
 	if(USART_fast_transmit_RS485(&huart1, tamagawa_encoder_data.encoder_command)!=HAL_OK){inverter_error_trip(internal_software);}
-	if(HAL_UART_Receive_DMA(&huart1, tamagawa_encoder_data.motor_data_response_packet, 11)!=HAL_OK){//start listening for response, it will be automatically copied by DMA after reception
-		tamagawa_encoder_data.communication_error_count++;
-		if(tamagawa_encoder_data.communication_error_count>10){inverter_error_trip(encoder_error_communication);}
-	}else{tamagawa_encoder_data.communication_error_count=0;}
-
+		if(HAL_UART_Receive_DMA(&huart1, tamagawa_encoder_data.motor_data_response_packet, 11)!=HAL_OK){//start listening for response, it will be automatically copied by DMA after reception
+			tamagawa_encoder_data.communication_error_count++;
+			if(tamagawa_encoder_data.communication_error_count>10){inverter_error_trip(encoder_error_communication);}
+		}else{tamagawa_encoder_data.communication_error_count=0;}
+}
+void tamagawa_encoder_process_position(void){
 	uint8_t xor_cheksum=0;
 	for(uint8_t i=0;i<10;i++){
 		xor_cheksum^=tamagawa_encoder_data.motor_data_response_packet[i];

@@ -302,14 +302,20 @@ void clarke_transform(float I_U,float I_V,float * I_alpha,float * I_beta){
 	* I_beta=(0.5773502f * I_U) + (1.1547005f * I_V);
 }
 void park_transform(float I_alpha,float I_beta,float angle,float * I_d,float * I_q){
-	*I_d = (I_alpha * arm_cos_f32(angle)) + (I_beta * arm_sin_f32(angle));
-	*I_q = (I_alpha * arm_sin_f32(angle)*(-1)) + (I_beta * arm_cos_f32(angle));
+	float pSinVal,pCosVal;
+	pSinVal = arm_sin_f32(angle);
+	pCosVal = arm_cos_f32(angle);
+	*I_d = (I_alpha * pCosVal) + (I_beta * pSinVal);
+	*I_q = (I_alpha * pSinVal *(-1)) + (I_beta * pCosVal);
 }
 
 
 void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float * U_beta){
-	*U_alpha= (U_d * arm_cos_f32(angle)) - (U_q * arm_sin_f32(angle));
-	*U_beta = (U_d * arm_sin_f32(angle)) + (U_q * arm_cos_f32(angle));
+	float pSinVal,pCosVal;
+	pSinVal = arm_sin_f32(angle);
+	pCosVal = arm_cos_f32(angle);
+	*U_alpha= (U_d * pCosVal) - (U_q * pSinVal);
+	*U_beta = (U_d * pSinVal) + (U_q * pCosVal);
 }
 
 //Tf - filter time constant in seconds
@@ -476,10 +482,11 @@ void RMS_current_calculation_loop(void){
 	inverter.RMS_current.I_W_square_sum+=(inverter.I_W*inverter.I_W);
 	//calculate RMS values and average of 3 phases
 	if(inverter.RMS_current.rms_count>CURRENT_RMS_SAMPLING_COUNT){
-		float I_U_RMS=sqrtf(inverter.RMS_current.I_U_square_sum/(float)inverter.RMS_current.rms_count);
-		float I_V_RMS=sqrtf(inverter.RMS_current.I_V_square_sum/(float)inverter.RMS_current.rms_count);
-		float I_W_RMS=sqrtf(inverter.RMS_current.I_W_square_sum/(float)inverter.RMS_current.rms_count);
-		inverter.I_RMS=(I_U_RMS+I_V_RMS+I_W_RMS)/3.0f;
+		//float I_U_RMS=sqrtf(inverter.RMS_current.I_U_square_sum/(float)inverter.RMS_current.rms_count);
+		//float I_V_RMS=sqrtf(inverter.RMS_current.I_V_square_sum/(float)inverter.RMS_current.rms_count);
+		////float I_W_RMS=sqrtf(inverter.RMS_current.I_W_square_sum/(float)inverter.RMS_current.rms_count);
+		//inverter.I_RMS=(I_U_RMS+I_V_RMS+I_W_RMS)/3.0f;
+		inverter.I_RMS=sqrtf(((inverter.RMS_current.I_U_square_sum+inverter.RMS_current.I_V_square_sum+inverter.RMS_current.I_W_square_sum)/3.0f)/(float)inverter.RMS_current.rms_count);
 		inverter.RMS_current.rms_count=0;inverter.RMS_current.I_U_square_sum=0.0f;inverter.RMS_current.I_V_square_sum=0.0f;inverter.RMS_current.I_W_square_sum=0.0f;}
 }
 void motor_control_loop_slow(void){
@@ -568,9 +575,11 @@ void motor_control_loop(void){
 	//inverter.output_power_apparent=inverter.output_voltage*hypotf(inverter.I_alpha,inverter.I_beta);
 	//inverter.output_power_active=inverter.output_voltage*inverter.I_q_filtered;
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
+
 	//calculate/get rotor electric angle from encoder
 	if(parameter_set.motor_feedback_type==abz_encoder){abz_encoder_calculate_abs_position();}
 	if(parameter_set.motor_feedback_type==mitsubishi_encoder){mitsubishi_encoder_process_data();}
+	if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_process_position();}
 
 	//calculate torque angle
 	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}
@@ -653,8 +662,7 @@ void motor_control_loop(void){
 	}
 	//calculate stator field angle in foc mode to calculate torque angle correctly
 	if(inverter.control_mode==foc){
-		arm_atan2_f32(-inverter.output_voltage_vector.U_Beta,-inverter.output_voltage_vector.U_Alpha,&inverter.stator_electric_angle);
-		inverter.stator_electric_angle+=_PI+0.00000001f;
+		inverter.stator_electric_angle=atan2f(-inverter.output_voltage_vector.U_Beta,-inverter.output_voltage_vector.U_Alpha)+_PI+0.00000001f;
 	}
 
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
@@ -664,7 +672,7 @@ void motor_control_loop(void){
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 
 	//start data tansaction with encoder
-		if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_read_position();}
+		if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_request_position();}
 		if(parameter_set.motor_feedback_type==panasonic_minas_encoder){panasonic_encoder_read_position();}
 		if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
 
