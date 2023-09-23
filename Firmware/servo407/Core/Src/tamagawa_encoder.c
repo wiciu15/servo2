@@ -75,9 +75,11 @@ HAL_StatusTypeDef tamagawa_encoder_read_eeprom(uint8_t address, uint8_t * receiv
 		tamagawa_encoder_data.communication_error_count++;
 		if(tamagawa_encoder_data.communication_error_count>10){tamagawa_encoder_data.encoder_state=encoder_error_no_communication;inverter_error_trip(encoder_error_communication);}
 	}
+	__disable_irq();
 	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 1);
 	if(HAL_UART_Transmit(&huart1, tamagawa_encoder_data.motor_eeprom_request, 3, 1)){inverter_error_trip(internal_software);}
 	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 0);
+	__enable_irq();
 	osDelay(1);
 	uint8_t xor_cheksum=0;
 	for(uint8_t i=0;i<3;i++){
@@ -99,18 +101,20 @@ HAL_StatusTypeDef tamagawa_encoder_read_id(void){
 		tamagawa_encoder_data.communication_error_count++;
 		if(tamagawa_encoder_data.communication_error_count>10){tamagawa_encoder_data.encoder_state=encoder_error_no_communication;inverter_error_trip(encoder_error_communication);}
 	}
-	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 1);
 	uint8_t command=0x92;
+	__disable_irq();
+	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 1);
 	if(HAL_UART_Transmit(&huart1, &command, 1, 1)){inverter_error_trip(internal_software);}
 	HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 0);
-	osDelay(1);
+	__enable_irq();
+	osDelay(5);
 	uint8_t xor_cheksum=0;
 	for(uint8_t i=0;i<3;i++){
 		xor_cheksum^=received_data[i];
 	}
 	if(xor_cheksum!=received_data[3]){status=HAL_ERROR;tamagawa_encoder_data.checksum_error_count++;}else{
-	tamagawa_encoder_data.encoder_id[0]=received_data[1];
-	tamagawa_encoder_data.encoder_id[1]=received_data[2];}
+		tamagawa_encoder_data.encoder_id[0]=received_data[1];
+		tamagawa_encoder_data.encoder_id[1]=received_data[2];}
 
 	return(status);
 }
@@ -133,7 +137,7 @@ HAL_StatusTypeDef tamagawa_encoder_write_eeprom(uint8_t address, uint8_t data){
 			if(HAL_UART_Transmit(&huart1, data_to_send, 4, 1)){inverter_error_trip(internal_software);}
 			HAL_GPIO_WritePin(ENCODER_DE_GPIO_Port,ENCODER_DE_Pin, 0);
 		}
-		osDelay(1);
+		osDelay(10);
 		if(received_data[1]!=address ||received_data[2]!=data || received_data[3]!=(received_data[0]^received_data[1]^received_data[2])){
 			status=HAL_ERROR;
 		}

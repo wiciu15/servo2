@@ -1270,6 +1270,7 @@ void uiTaskStart(void *argument)
 	osTimerStart(LEDTimerHandle, 100);
 	display_init();
 	osThreadSuspend(uiTaskHandle);
+	osDelay(2000);
 	/* Infinite loop */
 	for(;;)
 	{

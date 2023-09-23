@@ -160,12 +160,12 @@ float U_sat=2.0f;
 void inverter_setup(void){
 	//@TODO: implement writing default parameter set to eeprom
 	read_parameter_set_from_eeprom();
-	osDelay(500);
+	osDelay(200);
 	set_ctrl_loop_frequency(DEFAULT_CTRL_LOOP_FREQ);
 	HAL_ADC_Start_DMA(&hadc2, (uint32_t*)inverter.output_current_adc_buffer, 10);//start current reading
 	if(parameter_set.motor_feedback_type!=no_feedback){ //enable encoder power supply
 		HAL_GPIO_WritePin(ENC_ENABLE_GPIO_Port, ENC_ENABLE_Pin, 1);
-		osDelay(4000);
+		osDelay(500);
 	}
 	if(parameter_set.motor_feedback_type==panasonic_minas_encoder && panasonic_encoder_data.encoder_state==encoder_eeprom_reading){panasonic_encoder_motor_identification();}
 	if(parameter_set.motor_feedback_type==tamagawa_encoder && tamagawa_encoder_data.encoder_state==encoder_eeprom_reading){tamagawa_encoder_motor_identification();	}
