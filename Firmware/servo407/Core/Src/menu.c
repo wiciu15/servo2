@@ -8,6 +8,7 @@
 #include "user_interface.h"
 #include "menu.h"
 #include "ssd1306.h"
+#include <string.h>
 
 void (*key_back_func)(void) = &menu_back;
 void (*key_next_func)(void) = &menu_next;
@@ -291,11 +292,27 @@ void menu_monitor_refresh(){
 	for(uint16_t i=monitor_page*5;i<monitor_page*5+5;i++){
 		if(i>=monitor_list_size)break; //check if monitor list not ended
 		ssd1306_SetCursor(2, ((i%5)*9)+14);
-		ssd1306_WriteString(monitor_list[i].shortName, Font_6x8, 1);
+		char shortname [10];
+		memcpy(shortname,monitor_list[i].shortName,sizeof(monitor_list[i].shortName));
+		ssd1306_WriteString(shortname, Font_6x8, 1);
 		ssd1306_SetCursor(70, ((i%5)*9)+14);
-		float value = monitor_get_value(monitor_list[i].ptrToActualValue);
 		char  stringbuf [30];
-		sprintf(stringbuf,"%6.*f%s",(int)monitor_list[i].precision,value,monitor_list[i].unit);
+		uint32_t rawvalue;
+		parameter_read(monitor_list[i], &rawvalue);
+		switch(monitor_list[i].type){
+		case pFLOAT:{
+			float value;
+			memcpy(&value,&rawvalue,4); //switch from 32bit data to float
+			sprintf(stringbuf,"%6.*f%s",(int)monitor_list[i].precision,value,monitor_list[i].unit);
+			break;
+		}
+		case pINT16:{
+			int16_t value;
+			memcpy(&value,&rawvalue,2); //switch from 32bit raw data to int16
+			sprintf(stringbuf,"%6.1i%s",value,monitor_list[i].unit);
+			break;
+		}
+		}
 		ssd1306_WriteString(stringbuf, Font_6x8, 1);
 	}
 }
