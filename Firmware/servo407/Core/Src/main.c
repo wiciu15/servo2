@@ -1284,9 +1284,9 @@ void timerSoftstartCallback(void *argument)
 {
 	/* USER CODE BEGIN timerSoftstartCallback */
 	if(inverter.DCbus_voltage>=inverter.undervoltage_limit+10.0f){
-		if(inverter.error<=undervoltage_condition){inverter.error=0;}
-		if(inverter.state==inhibit){inverter.state=stop;}
+		if(inverter.error==undervoltage_condition){inverter.error=0;}
 		HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);
+		if(inverter.error==no_error)inverter.state=ready_to_switch_on;
 	}
 	/* USER CODE END timerSoftstartCallback */
 }
@@ -1297,19 +1297,19 @@ void LEDTimerCallback(void *argument)
 	/* USER CODE BEGIN LEDTimerCallback */
 	if(HAL_TIM_Base_GetState(&htim5)==HAL_TIM_STATE_BUSY){
 		switch(inverter.state){
-		case run: //status on error off
+		case switched_on: case operation_enabled: case quickstop_active: //status on error off
 			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,1);
 			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
 			break;
-		case stop: //status blink error off
+		case ready_to_switch_on: //status blink error off
 			HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
 			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
 			break;
-		case inhibit: //status off error blink
+		case switch_on_disabled: //status off error blink
 			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
 			HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
 			break;
-		case trip: //status off error on
+		case faulted: //status off error on
 			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
 			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 1);
 			break;

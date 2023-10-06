@@ -17,7 +17,7 @@ typedef struct _parameter_set_t{
 	uint32_t XOR_checksum;
 	uint16_t software_version; //software version on which parameter set was created
 
-	uint8_t control_mode;
+	int control_mode;
 
 	float motor_max_current; //current for motor overcurrent trip
 	float motor_nominal_current; //current for torque calculation

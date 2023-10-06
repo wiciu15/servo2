@@ -63,7 +63,7 @@ parameter_set_t parameter_set={
 inverter_t inverter={
 		.control_loop_freq=8000,
 		.error=no_error,
-		.state=inhibit,
+		.state=not_ready_to_switch_on,
 		.control_mode=manual,
 		.duty_cycle_limit=10498, //max value you can write to timer compare register
 		.output_voltage_vector={
@@ -174,6 +174,7 @@ void inverter_setup(void){
 	if(parameter_set.motor_feedback_type == delta_encoder && delta_encoder_data.encoder_state== encoder_eeprom_reading){delta_encoder_init();}
 	HAL_TIM_Base_Start_IT(&htim5); //start main motor control loop
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); //start braking chopper
+	inverter.state=switch_on_disabled;
 
 }
 
@@ -190,7 +191,7 @@ void set_ctrl_loop_frequency(uint16_t frequency){
   */
 void inverter_enable(){
 	if(inverter.error==no_error){
-		inverter.state=run;
+		inverter.state=switched_on;
 		htim1.Instance->CCR1=inverter.duty_cycle_limit/2;
 		htim1.Instance->CCR2=inverter.duty_cycle_limit/2;
 		htim1.Instance->CCR3=inverter.duty_cycle_limit/2;
@@ -209,13 +210,14 @@ void inverter_enable(){
  * @retval null
  */
 void inverter_disable(){
-	if(inverter.state==run){inverter.state=stop;}
 	HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_1);
 	HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_2);
 	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_2);
 	HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3);
+
+	inverter.state=ready_to_switch_on;
 
 	inverter.id_current_controller_data.last_error=0.0f;
 	inverter.id_current_controller_data.last_integral=0.0f;
@@ -239,18 +241,20 @@ void inverter_disable(){
   * @param  error to set, DO NOT write no_error(0) here
   * @retval null
   */
-void inverter_error_trip(uint8_t error_number){
+void inverter_error_trip(uint16_t error_number){
 	inverter_disable();
-	if(error_number==internal_software){
-
-	}
-	if(error_number==undervoltage_condition && inverter.error==no_error){inverter.state=inhibit;}else{inverter.state=trip;}
-	inverter.error|=1<<(error_number-1);
+	if(error_number==undervoltage_condition && inverter.error==no_error){inverter.state=switch_on_disabled;}else{inverter.state=faulted;}
+	inverter.error=1<<(error_number-1);
+	//@TODO: add error history logging
 }
 
 HAL_StatusTypeDef inverter_error_reset(void){
 	//@TODO: implement non-resettable errors
-	if(inverter.error!=undervoltage_condition){inverter.error=no_error;inverter.state=stop;return HAL_OK;}else{return HAL_ERROR;}
+	if(inverter.error!=undervoltage_condition){inverter.error=no_error;inverter.state=switch_on_disabled;return HAL_OK;}else{return HAL_ERROR;}
+}
+
+uint8_t isInverter_running(void){
+	if(htim1.ChannelState[0]==HAL_TIM_CHANNEL_STATE_BUSY){return 1;}else{return 0;}
 }
 
 HAL_StatusTypeDef HOT_ADC_read(){
@@ -499,12 +503,10 @@ void motor_control_loop_slow(void){
   * @retval null
   */
 void DCBus_voltage_check(void){
-	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+10.0f)&& !osTimerIsRunning(timerSoftstartHandle)&&(inverter.state==inhibit || inverter.state==trip)){
-		//start timer to delay softstart relay and inverter readyness
+	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+10.0f)&& !osTimerIsRunning(timerSoftstartHandle)&&(inverter.state==switch_on_disabled || inverter.state==faulted)){
+		//start timer to delay softstart relay and inverter readiness
 		osStatus_t status = osTimerStart(timerSoftstartHandle, 1000);
-		if(status!=0){
-			inverter_error_trip(softstart_failure);
-		}
+		if(status!=0){inverter_error_trip(softstart_failure);}
 	}
 }
 
@@ -544,13 +546,13 @@ void motor_control_loop(void){
 		HOT_ADC_read();
 	}
 	//check if softstart relay is energized, due to software timer failure it can be not energized while inverter is in ready state
-	if(!HAL_GPIO_ReadPin(SOFTSTART_GPIO_Port, SOFTSTART_Pin) && (inverter.state==run)){
+	if(!HAL_GPIO_ReadPin(SOFTSTART_GPIO_Port, SOFTSTART_Pin) && (inverter.state==switched_on||inverter.state==operation_enabled)){
 		inverter_error_trip(softstart_failure);
 	}
 
 	//check if DC bus volatge is appropriate
-	if(inverter.DCbus_voltage<inverter.undervoltage_limit && inverter.state==run){inverter_error_trip(undervoltage);}
-	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (inverter.state==stop || inverter.state==trip)){inverter_error_trip(undervoltage_condition);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);}
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && isInverter_running()){inverter_error_trip(undervoltage);}
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (!isInverter_running())){HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);inverter.state=switch_on_disabled;}
 	if(inverter.DCbus_voltage>inverter.overvoltage_limit){inverter_error_trip(overvoltage);	}
 
 	//brake chopper control
@@ -594,7 +596,8 @@ void motor_control_loop(void){
 		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(inverter.control_loop_freq/10);
 		if(inverter.rotor_speed>theoretical_encoder_speed/2.0f){inverter.rotor_speed-=theoretical_encoder_speed;}if(inverter.rotor_speed<(-theoretical_encoder_speed/2.0f)){inverter.rotor_speed+=theoretical_encoder_speed;}
 		inverter.last_rotor_electric_angle = inverter.rotor_electric_angle;
-		if(inverter.control_mode==foc && inverter.speed_setpoint!=0 && inverter.state==run){
+		//PI speed controller
+		if((inverter.control_mode==foc_speed || inverter.control_mode==sensorless_speed) && isInverter_running()){
 			inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint-inverter.filtered_rotor_speed);
 		}
 		inverter.speed_measurement_loop_i=0;
@@ -609,7 +612,7 @@ void motor_control_loop(void){
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 	//increment stator electric angle based on set frequency if not in foc mode
 	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current ){
-		if(inverter.state==run){inverter.stator_electric_angle+=inverter.stator_field_speed;}
+		if(inverter.state==operation_enabled){inverter.stator_electric_angle+=inverter.stator_field_speed;}
 		if(inverter.stator_electric_angle>_2_PI){inverter.stator_electric_angle-=_2_PI;}
 		if(inverter.stator_electric_angle<0.0f){inverter.stator_electric_angle+=_2_PI;}
 	}
@@ -620,10 +623,11 @@ void motor_control_loop(void){
 		inverter.output_voltage=(inverter.stator_field_speed/(parameter_set.motor_base_frequency*(_2_PI/inverter.control_loop_freq)))*parameter_set.motor_max_voltage;
 	}
 	//calculate field and torque currents
-	if(inverter.control_mode!=foc){
-		park_transform(inverter.I_alpha, inverter.I_beta, inverter.stator_electric_angle, &inverter.I_d, &inverter.I_q);
-	}else{
+	if(inverter.control_mode>=1){ // foc based modes
 		park_transform(inverter.I_alpha, inverter.I_beta, inverter.rotor_electric_angle, &inverter.I_d, &inverter.I_q);
+	}
+	else{ //custom modes
+		park_transform(inverter.I_alpha, inverter.I_beta, inverter.stator_electric_angle, &inverter.I_d, &inverter.I_q);
 	}
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 
@@ -632,13 +636,14 @@ void motor_control_loop(void){
 	inverter.I_q_filtered = LowPassFilter(parameter_set.current_filter_ts, inverter.I_q, &inverter.I_q_last);
 
 
-	//PI control of voltage vector
-	if(inverter.control_mode==open_loop_current && inverter.state==run){
+	//PI control of voltage vector in open loop
+	if(inverter.control_mode==open_loop_current && isInverter_running()){
 		inverter.U_q = PI_control(&inverter.iq_current_controller_data,inverter.torque_current_setpoint-inverter.I_q_filtered);
 		inverter.U_d = PI_control(&inverter.id_current_controller_data,inverter.field_current_setpoint-inverter.I_d_filtered);
 		inv_park_transform(inverter.U_d, inverter.U_q, inverter.stator_electric_angle, &inverter.output_voltage_vector.U_Alpha, &inverter.output_voltage_vector.U_Beta);
 	}
-	if(inverter.control_mode==foc && inverter.state==run){
+	//PI control of voltage vector in foc modes
+	if(inverter.control_mode>=1 && isInverter_running()){
 		//speed limiter removes torque if motor spins too fast
 		if(inverter.filtered_rotor_speed>parameter_set.motor_max_speed || inverter.filtered_rotor_speed<(-parameter_set.motor_max_speed)){
 			//@TODO: implement speed limiter based on some linear decrease of torque instead of setting 0.0 setpoint - motor vibrates at speed limit
@@ -660,8 +665,8 @@ void motor_control_loop(void){
 		//calculate output voltage for preview
 		inverter.output_voltage=hypotf(inverter.output_voltage_vector.U_Alpha,inverter.output_voltage_vector.U_Beta);
 	}
-	//calculate stator field angle in foc mode to calculate torque angle correctly
-	if(inverter.control_mode==foc){
+	//calculate stator field angle in foc modes to calculate torque angle correctly
+	if(inverter.control_mode>=1){
 		inverter.stator_electric_angle=atan2f(-inverter.output_voltage_vector.U_Beta,-inverter.output_voltage_vector.U_Alpha)+_PI+0.00000001f;
 	}
 
