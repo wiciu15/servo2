@@ -31,7 +31,7 @@
 #include "delta_encoder.h"
 
 //list of possible inverter errors that need to inhibit output and trip the inverter
-typedef enum {no_error=0x0000,
+typedef enum {no_error,
 	undervoltage_condition,//condition that clears ittself after voltage comes back ok
 	undervoltage, //trip if supply was too low when running
 	overvoltage,
@@ -48,19 +48,8 @@ typedef enum {no_error=0x0000,
 	softstart_failure,
 	eeprom_error
 }inverter_error_t;
-typedef enum {not_ready_to_switch_on,switch_on_disabled,ready_to_switch_on,switched_on,operation_enabled,quickstop_active,fault_reaction,faulted}inverter_state_t;
-typedef enum control_mode {
-	manual=-5,
-	u_f=-4,
-	open_loop_current=-1,
-	sensorless_speed=-3,
-	sensorless_torque=-2,
-	foc_torque=4,
-	foc_speed=2,
-	foc_position_profile=1,
-	foc_position_interpolated=7,
-	homing=6
-}control_mode_t;
+typedef enum {stop,run,inhibit,trip}inverter_state_t;
+typedef enum {manual,u_f,open_loop_current,foc}control_mode_t;
 typedef struct _output_voltage_vector_t{
 	float U_Alpha;/*!< stator electric angle in radians, values over 6,28 (2*PI) are not allowed and will result in error trip */
 	float U_Beta;/*!< stator voltage vector lenght in volts */
@@ -145,9 +134,8 @@ void inverter_setup(void);
 void set_ctrl_loop_frequency(uint16_t frequency);
 void inverter_enable(void);
 void inverter_disable(void);
-void inverter_error_trip(uint16_t error_number);
+void inverter_error_trip(uint8_t error_number);
 HAL_StatusTypeDef inverter_error_reset(void);
-uint8_t isInverter_running(void);
 HAL_StatusTypeDef HOT_ADC_read(void);
 void HOT_ADC_RX_Cplt(void);
 void HOT_ADC_calculate_avg(void);

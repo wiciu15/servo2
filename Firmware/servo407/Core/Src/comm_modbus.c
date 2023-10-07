@@ -25,9 +25,9 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 2: response = inverter.error;break;
 	case 3: response = inverter.state;break;
 	case 5: response = inverter.control_mode;break;
-	case 6:{if(inverter.control_mode==manual || inverter.control_mode==open_loop_current){response = (int16_t)(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq))*10;}if(inverter.control_mode>=1){response = inverter.speed_setpoint;} break;}
-	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode >=1){response = (int16_t)(((inverter.torque_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
-	case 8:{if(inverter.control_mode==open_loop_current || inverter.control_mode>=1){response = (int16_t)(((inverter.field_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
+	case 6:{if(inverter.control_mode==manual || inverter.control_mode==open_loop_current){response = (int16_t)(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq))*10;}if(inverter.control_mode==foc){response = inverter.speed_setpoint;} break;}
+	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode == foc){response = (int16_t)(((inverter.torque_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
+	case 8:{if(inverter.control_mode==open_loop_current || inverter.control_mode==foc){response = (int16_t)(((inverter.field_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
 	case 10: response = (int16_t)(inverter.I_RMS *100.0f);break;
 	case 11: response = (uint16_t)(inverter.stator_electric_angle*(180.0f/_PI)*100.0f);break;
 	case 12: response = (int16_t)(inverter.torque_angle*(180.0f/_PI));break;
@@ -91,12 +91,11 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 				inverter_error_trip(external_comm);
 			default:
 				inverter_disable();break;
-		}
-		break;}
+			}
+	break;}
 
 	case 5: //operation mode register
-	{int16_t received_value=value;
-	if(received_value<=7 && received_value>=-5 && received_value!=0){parameter_set.control_mode=received_value;}
+	{if(value<=3){parameter_set.control_mode=value;}
 	break;
 	}
 
@@ -105,7 +104,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current){
 		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.stator_field_speed = ((float)received_speed*(_2_PI/inverter.control_loop_freq))/10.0f;}
 	}
-	if(inverter.control_mode>=1){
+	if(inverter.control_mode==foc){
 		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.speed_setpoint = received_speed;}
 	}
 	break;}
@@ -114,7 +113,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	{if(inverter.control_mode==manual){
 		if(value<=1000 && value>=0){inverter.output_voltage = ((float)value/1000.0f)*inverter.DCbus_voltage;}
 		}
-	if(inverter.control_mode==open_loop_current || inverter.control_mode>=1 ){
+	if(inverter.control_mode==open_loop_current || inverter.control_mode==foc ){
 		int16_t received_torque_setpoint = (int16_t)value;
 		if(received_torque_setpoint>=-3000 && received_torque_setpoint<=3000){
 			if(inverter.speed_setpoint==0.0f){
@@ -127,7 +126,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 
 	case 8:
 	{
-		if(inverter.control_mode==open_loop_current || inverter.control_mode>=1){
+		if(inverter.control_mode==open_loop_current || inverter.control_mode==foc){
 			int16_t received_field_setpoint = value;
 			if(received_field_setpoint>=-1000 && received_field_setpoint<=1000){
 				inverter.field_current_setpoint=(received_field_setpoint/1000.0f)*parameter_set.motor_nominal_current;
@@ -140,7 +139,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	case 20:
 	{
 		uint16_t received_feedback_type = value;
-		if(received_feedback_type<=6 && !isInverter_running()){
+		if(received_feedback_type<=6 && inverter.state!=run){
 			parameter_set.motor_feedback_type=value;}
 		break;}
 	//Encoder angle correction

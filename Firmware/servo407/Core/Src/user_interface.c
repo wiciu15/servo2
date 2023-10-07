@@ -41,20 +41,16 @@ void draw(){
 	ssd1306_Line(0, 11, 127, 11, White);
 	char statusString [24];
 	switch(inverter.state){
-	//@TODO: differentiate display appearance for different inverter states
-	case switched_on: case operation_enabled: case quickstop_active:
-		if(inverter.control_mode>=1){sprintf(statusString,"RUN %+5.0fRPM %.1fA %.0fC",inverter.filtered_rotor_speed,inverter.I_RMS,inverter.IGBT_temp);}
+	case run:
+		if(inverter.control_mode==foc){sprintf(statusString,"RUN %+5.0fRPM %.1fA %.0fC",inverter.filtered_rotor_speed,inverter.I_RMS,inverter.IGBT_temp);}
 		else{sprintf(statusString,"RUN %+4.1fHz %.1fA %.0fC",inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq),inverter.I_RMS,inverter.IGBT_temp);}
 		break;
-	case ready_to_switch_on:
+	case stop:
 		sprintf(statusString,"RDY %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);break;
-	case switch_on_disabled:
+	case inhibit:
 		sprintf(statusString,"UVL %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);break;
-	case faulted:
+	case trip:
 		//@TODO: implement error number decoding to show on display
-		sprintf(statusString,"ERR %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);
-		break;
-	default:
 		sprintf(statusString,"ERR %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);
 		break;
 	}
