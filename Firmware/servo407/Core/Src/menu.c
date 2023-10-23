@@ -151,7 +151,7 @@ void menu_back(void) {
 		menu_refresh();
 
 	}else{
-		if(inverter.state!=switch_on_disabled)inverter_disable();
+		if(inverter.state!=switch_on_disabled){inverter_disable();inverter.state=switch_on_disabled;}
 		if(inverter.error!=no_error)inverter_error_reset();
 	}
 }
@@ -297,8 +297,8 @@ void menu_monitor_refresh(){
 		ssd1306_WriteString(shortname, Font_6x8, 1);
 		ssd1306_SetCursor(70, ((i%5)*9)+14);
 		char  stringbuf [30];
-		uint32_t rawvalue;
-		parameter_read(monitor_list[i], &rawvalue);
+		uint32_t rawvalue=0;
+		if(parameter_read(monitor_list[i], &rawvalue)==HAL_OK){
 		switch(monitor_list[i].type){
 		case pFLOAT:{
 			float value;
@@ -312,8 +312,21 @@ void menu_monitor_refresh(){
 			sprintf(stringbuf,"%6.1i%s",value,monitor_list[i].unit);
 			break;
 		}
+		case pUINT16:{
+			uint16_t value;
+			memcpy(&value,&rawvalue,2); //switch from 32bit raw data to int16
+			sprintf(stringbuf,"%6.1u%s",value,monitor_list[i].unit);
+			break;
+		}
+		case pBOOL16:{
+			uint16_t value;
+			memcpy(&value,&rawvalue,2); //switch from 32bit raw data to int16
+			sprintf(stringbuf,"%#X%s",value,monitor_list[i].unit);
+			break;
+		}
 		}
 		ssd1306_WriteString(stringbuf, Font_6x8, 1);
+		}
 	}
 }
 

@@ -26,8 +26,8 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 3: response = inverter.state;break;
 	case 5: response = inverter.control_mode;break;
 	case 6:{if(inverter.control_mode==manual || inverter.control_mode==open_loop_current){response = (int16_t)(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq))*10;}if(inverter.control_mode>=1){response = inverter.speed_setpoint;} break;}
-	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode >=1){response = (int16_t)(((inverter.torque_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
-	case 8:{if(inverter.control_mode==open_loop_current || inverter.control_mode>=1){response = (int16_t)(((inverter.field_current_setpoint/_SQRT2)/parameter_set.motor_nominal_current)*1000.0f);}break;}
+	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode >=1){response = (int16_t)(((inverter.torque_current_setpoint)/parameter_set.motor_nominal_current)*1000.0f);}break;}
+	case 8:{if(inverter.control_mode==open_loop_current || inverter.control_mode>=1){response = (int16_t)(((inverter.field_current_setpoint)/parameter_set.motor_nominal_current)*1000.0f);}break;}
 	case 10: response = (int16_t)(inverter.I_RMS *100.0f);break;
 	case 11: response = (uint16_t)(inverter.stator_electric_angle*(180.0f/_PI)*100.0f);break;
 	case 12: response = (int16_t)(inverter.torque_angle*(180.0f/_PI));break;
@@ -79,20 +79,39 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	switch (local_address){
 
 	case 2://error register
-		{if(value==0){inverter_error_reset();}break; //acknowledge error
-		break;}
+	{if(value==0){inverter_error_reset();}break; //acknowledge error
+	break;}
 	case 3: //control register
-		{switch(value){
-			case 0:
-				inverter_disable();break;
-			case 1:
-				inverter_enable();break;
-			case 3:
-				inverter_error_trip(external_comm);
-			default:
-				inverter_disable();break;
+	{
+		if(!bitcheck(value,1)){//enable voltage bit =0 - disable inverter, transition 7,9,10,12
+			inverter_disable();
 		}
-		break;}
+		if(bitcheck(value,1) && bitcheck(value,2) && inverter.state==switch_on_disabled){//enable voltage bit =1 - ready to switch on, transition 2
+			if(!inverter.softstart_finished)inverter_error_trip(undervoltage);
+			if(inverter.softstart_finished)inverter.state=ready_to_switch_on;
+		}
+		if(bitcheck(value,0) && bitcheck(value,2)&& inverter.state==ready_to_switch_on){ //switch on bit =1 - switched on state, transition 3
+			inverter.state=switched_on;
+		}
+		if(!bitcheck(value,0) &&  bitcheck(value,2) && (inverter.state==switched_on ||inverter.state==operation_enabled || inverter.state==quickstop_active)){ //switch on bit = 0
+			inverter.state=ready_to_switch_on;
+			inverter_disable();
+		}
+		if(!bitcheck(value,2)){ //bit 2 quickstop has to be high in other transitions, if low go to quickstop when operation enabled, otherwise switch on disabled
+			if(inverter.state==operation_enabled){inverter_disable();inverter.state=quickstop_active;}
+			if(inverter.state==ready_to_switch_on || inverter.state==switched_on);
+		}
+		if(bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0)&& (inverter.state==switched_on||inverter.state==quickstop_active)){ //transition 4
+			inverter_enable();inverter.state=operation_enabled;
+		}
+		if(!bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0) && inverter.state == operation_enabled){
+			inverter_disable();inverter.state=switched_on;
+		}
+		if(bitcheck(value,7) && inverter.state==faulted){
+			inverter_error_reset();
+		}
+		break;
+	}
 
 	case 5: //operation mode register
 	{int16_t received_value=value;
@@ -114,12 +133,10 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 	{if(inverter.control_mode==manual){
 		if(value<=1000 && value>=0){inverter.output_voltage = ((float)value/1000.0f)*inverter.DCbus_voltage;}
 		}
-	if(inverter.control_mode==open_loop_current || inverter.control_mode>=1 ){
+	if(inverter.control_mode==open_loop_current || inverter.control_mode==foc_torque ){
 		int16_t received_torque_setpoint = (int16_t)value;
 		if(received_torque_setpoint>=-3000 && received_torque_setpoint<=3000){
-			if(inverter.speed_setpoint==0.0f){
-				inverter.torque_current_setpoint=(received_torque_setpoint/1000.0f)*parameter_set.motor_nominal_current;
-			}
+				inverter.torque_current_setpoint=(received_torque_setpoint/1000.0f)*(parameter_set.motor_nominal_current);
 		}
 	}
 	break;
@@ -130,7 +147,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 		if(inverter.control_mode==open_loop_current || inverter.control_mode>=1){
 			int16_t received_field_setpoint = value;
 			if(received_field_setpoint>=-1000 && received_field_setpoint<=1000){
-				inverter.field_current_setpoint=(received_field_setpoint/1000.0f)*parameter_set.motor_nominal_current;
+				inverter.field_current_setpoint=(received_field_setpoint/1000.0f)*(parameter_set.motor_nominal_current);
 			}
 		}
 		break;
@@ -320,6 +337,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 		if(save_parameter_set_to_eeprom()!=HAL_OK){
 			inverter_error_trip(eeprom_error);
 		}
+		inverter.constant_values_update_needed=1;
 	}
 return value;
 }

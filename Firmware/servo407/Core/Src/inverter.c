@@ -27,15 +27,15 @@ extern osTimerId_t timerSoftstartHandle;
 parameter_set_t parameter_set={
 		.software_version=SOFTWARE_VERSION,
 		.control_mode=u_f,
-		.motor_max_current=10.5f, //14.3 according to datasheet
+		.motor_max_current=9.5f, //14.3 according to datasheet
 		.motor_nominal_current=6.8f,
-		.motor_pole_pairs=4, //4 for abb motor 5 for bch and mitsubishi hf-kn43
+		.motor_pole_pairs=5, //4 for abb motor 5 for bch and mitsubishi hf-kn43
 		.motor_max_voltage=170.0f,
 		.motor_max_torque=7.17f,
 		.motor_nominal_torque=2.39f,
-		.motor_nominal_speed=3000.0f,
+		.motor_nominal_speed=2000.0f,
 		.motor_base_frequency=200.0f,
-		.motor_max_speed=2000.0f,
+		.motor_max_speed=3000.0f,
 		.motor_rs=0.25f,
 		.motor_ls=0.002f, //winding inductance in H
 		.motor_K=0.18f,  //electical constant in V/(rad/s*pole_pairs) 1000RPM=104.719rad/s
@@ -55,12 +55,17 @@ parameter_set_t parameter_set={
 		.speed_controller_proportional_gain=0.008f,
 		.speed_controller_integral_gain=0.4f,
 		.speed_controller_output_torque_limit=1.0f, //limit torque, Iq is the output so the calcualtion is needed to convert N/m to A
-		.speed_controller_integral_limit=1.0f //1.0 is for example, valid iq current gets copied from motor max current
+		.speed_controller_integral_limit=1.0f, //1.0 is for example, valid iq current gets copied from motor max current
 
+		.speed_limit_positive=3000.0f,
+		.speed_limit_negative=-3000.0f,
+		.acceleration_ramp_s=0.1f, //unit: s/1000RPM
+		.deceleration_ramp_s=0.1f
 
 };
 
 inverter_t inverter={
+		.constant_values_update_needed=1,
 		.control_loop_freq=8000,
 		.error=no_error,
 		.state=not_ready_to_switch_on,
@@ -82,6 +87,7 @@ inverter_t inverter={
 		.output_power_apparent=0.0f,
 		.stator_field_speed=0.0f,
 		.DCbus_voltage=0.0f,
+		.softstart_finished=0,
 		.IGBT_temp=20.0f,
 		.zerocurrent_ADC_samples_U=0,
 		.zerocurrent_ADC_samples_V=0,
@@ -127,6 +133,15 @@ inverter_t inverter={
 		.torque_current_setpoint=0.0f,
 		.field_current_setpoint=0.0f,
 		.speed_setpoint=0.0f,
+		.speed_ramp_generator_data={
+				.ramp_type=linear_ramp,
+				.previous_output=0.0f,
+					.incr_per_second_positive=0.0f,
+					.incr_per_second_negative=0.0f,
+					.sampling_time=1.0f/(DEFAULT_CTRL_LOOP_FREQ/10),
+					.positive_limit=990.0f,
+					.negative_limit=-990.0f
+		},
 
 		.id_current_controller_data = {
 				0.0f,
@@ -152,6 +167,34 @@ inverter_t inverter={
 		}
 };
 float U_sat=2.0f;
+
+const inverter_error_object_t inverter_error_object[]={
+		{.error_number=0,.error_number_cia402=0x0000,.error_name="No error",.error_desc="No error"},
+		{.error_number=undervoltage,.error_number_cia402=0x3220,.error_name="Undervoltage",.error_desc="DC link undervoltage"},
+		{.error_number=overvoltage,.error_number_cia402=0x3210,.error_name="Overvoltage",.error_desc="DC link overvoltage"},
+		{.error_number=shortcircuit,.error_number_cia402=0x2320,.error_name="Short circuit",.error_desc="Output short circuit"},
+		{.error_number=inverter_overcurrent,.error_number_cia402=0x2310,.error_name="Overcurrent1",.error_desc="Inverter overload"},
+		{.error_number=inverter_overtemperature,.error_number_cia402=0x4310,.error_name="IGBT overtemp",.error_desc="Drive IGBT too hot"},
+		{.error_number=motor_overcurrent,.error_number_cia402=0x2311,.error_name="Overcurrent2",.error_desc="Motor overload"},
+		{.error_number=encoder_error_communication,.error_number_cia402=0x7380,.error_name="Encoder comm",.error_desc="Encoder no communication"},
+		{.error_number=encoder_error_mechanical,.error_number_cia402=0x7381,.error_name="Encoder oper",.error_desc="Encoder position deviation too big"},
+		{.error_number=overspeed,.error_number_cia402=0x7180,.error_name="Overspeed",.error_desc="Motor overspeed"},
+		{.error_number=adc_no_communication,.error_number_cia402=0x7280,.error_name="ADC error",.error_desc="Power board ADC no communication"},
+		{.error_number=internal_software,.error_number_cia402=0x6100,.error_name="Int software",.error_desc="Internal software error"},
+		{.error_number=external_comm,.error_number_cia402=0x9000,.error_name="External error",.error_desc="Error triggered by external source"},
+		{.error_number=softstart_failure,.error_number_cia402=0x5441,.error_name="Softstart fail",.error_desc="Softstart failed"},
+		{.error_number=eeprom_error,.error_number_cia402=0x5530,.error_name="EEPROM error",.error_desc="Data in EEPROM incorrect"}
+};
+
+inverter_error_history_t inverter_error_history;
+
+uint16_t get_CIA402_error_number(inverter_error_t error_num){
+	uint16_t cia402_error_number=0xFFFF;
+	for(uint8_t i=0;i<(sizeof(inverter_error_object)/sizeof(inverter_error_object_t));i++){
+		if(inverter_error_object[i].error_number==error_num){cia402_error_number=inverter_error_object[i].error_number_cia402;break;}
+	}
+	return cia402_error_number;
+}
 
 /**
  * @brief  Set up inverter for operation
@@ -183,7 +226,8 @@ void set_ctrl_loop_frequency(uint16_t frequency){
 	TIM5->ARR=(84000000/(uint32_t)inverter.control_loop_freq)-1;
 	inverter.id_current_controller_data.sampling_time=1.0f/inverter.control_loop_freq;
 	inverter.iq_current_controller_data.sampling_time=1.0f/inverter.control_loop_freq;
-	inverter.speed_controller_data.sampling_time=(1.0f/inverter.control_loop_freq)*10;
+	inverter.speed_controller_data.sampling_time=(1.0f/inverter.control_loop_freq)*10.0f;
+	inverter.speed_ramp_generator_data.sampling_time=1.0f/(frequency/10.0f);
 }
 /**
   * @brief  Enable PWM output of the inverter
@@ -191,7 +235,7 @@ void set_ctrl_loop_frequency(uint16_t frequency){
   */
 void inverter_enable(){
 	if(inverter.error==no_error){
-		inverter.state=switched_on;
+		inverter.state=operation_enabled;
 		htim1.Instance->CCR1=inverter.duty_cycle_limit/2;
 		htim1.Instance->CCR2=inverter.duty_cycle_limit/2;
 		htim1.Instance->CCR3=inverter.duty_cycle_limit/2;
@@ -217,7 +261,8 @@ void inverter_disable(){
 	HAL_TIM_PWM_Stop(&htim1,TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Stop(&htim1, TIM_CHANNEL_3);
 
-	inverter.state=ready_to_switch_on;
+	inverter.output_voltage_vector.U_Alpha=0.0f;
+	inverter.output_voltage_vector.U_Beta=0.0f;
 
 	inverter.id_current_controller_data.last_error=0.0f;
 	inverter.id_current_controller_data.last_integral=0.0f;
@@ -231,8 +276,14 @@ void inverter_disable(){
 	inverter.speed_controller_data.last_integral=0.0f;
 	inverter.speed_controller_data.last_output=0.0f;
 
+	inverter.speed_setpoint_after_rg=0.0f;
+	//inverter.speed_setpoint=0.0f;
+	inverter.speed_ramp_generator_data.previous_output=0.0f;
+
+	if(!(inverter.control_mode==foc_torque || inverter.control_mode==sensorless_torque || inverter.control_mode==open_loop_current)){//zero out torque setpoints in position/speed modes only
 	inverter.torque_current_setpoint=0.0f;
 	inverter.field_current_setpoint=0.0f;
+	}
 	//HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);
 }
 
@@ -243,18 +294,51 @@ void inverter_disable(){
   */
 void inverter_error_trip(uint16_t error_number){
 	inverter_disable();
-	if(error_number==undervoltage_condition && inverter.error==no_error){inverter.state=switch_on_disabled;}else{inverter.state=faulted;}
-	inverter.error=1<<(error_number-1);
-	//@TODO: add error history logging
+	inverter.state=faulted;
+	inverter.error=error_number;
+	//log error to history
+	uint8_t index = inverter_error_history.latest_record_index+1;
+	if(index>8)index=0;
+
+	inverter_error_history.error_buffer[index].error_num=get_CIA402_error_number(error_number);
+	inverter_error_history.latest_record_index=index;
+	//@TODO: write history buffer to eeprom in OS task, to not stay in this function for too long
 }
 
 HAL_StatusTypeDef inverter_error_reset(void){
-	//@TODO: implement non-resettable errors
-	if(inverter.error!=undervoltage_condition){inverter.error=no_error;inverter.state=switch_on_disabled;return HAL_OK;}else{return HAL_ERROR;}
+	//non-resettable errors
+	if(
+			inverter.error!=internal_software &&
+			inverter.error!=eeprom_error
+	){inverter.error=no_error;inverter.state=switch_on_disabled;return HAL_OK;}else{return HAL_ERROR;}
 }
 
 uint8_t isInverter_running(void){
 	if(htim1.ChannelState[0]==HAL_TIM_CHANNEL_STATE_BUSY){return 1;}else{return 0;}
+}
+
+void update_constant_values(void){
+	inverter.control_mode=parameter_set.control_mode;
+
+	inverter.id_current_controller_data.proportional_gain=parameter_set.field_current_ctrl_proportional_gain;
+	inverter.id_current_controller_data.integral_gain=parameter_set.field_current_ctrl_integral_gain;
+
+
+	inverter.iq_current_controller_data.proportional_gain=parameter_set.torque_current_ctrl_proportional_gain;
+	inverter.iq_current_controller_data.integral_gain=parameter_set.torque_current_ctrl_integral_gain;
+
+
+	inverter.speed_controller_data.proportional_gain=parameter_set.speed_controller_proportional_gain;
+	inverter.speed_controller_data.integral_gain=parameter_set.speed_controller_integral_gain;
+	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current;
+	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current;
+
+	inverter.speed_ramp_generator_data.positive_limit=parameter_set.speed_limit_positive;
+	inverter.speed_ramp_generator_data.negative_limit=parameter_set.speed_limit_negative;
+	if(parameter_set.acceleration_ramp_s!=0.0f){inverter.speed_ramp_generator_data.incr_per_second_positive=1000.0f/parameter_set.acceleration_ramp_s;}else{inverter.speed_ramp_generator_data.incr_per_second_positive=100000.0f;}
+	if(parameter_set.deceleration_ramp_s!=0.0f){inverter.speed_ramp_generator_data.incr_per_second_negative=1000.0f/parameter_set.deceleration_ramp_s;}else{inverter.speed_ramp_generator_data.incr_per_second_negative=100000.0f;}
+
+	inverter.constant_values_update_needed=0;
 }
 
 HAL_StatusTypeDef HOT_ADC_read(){
@@ -336,6 +420,35 @@ float LowPassFilterA(float Tf,float Ts,float actual_measurement, float * last_fi
 	float filtered_value = (alpha*(*last_filtered_value)) + ((1.0f - alpha)*actual_measurement);
 	*last_filtered_value = filtered_value;
 	return filtered_value;
+}
+
+float ramp_generator(ramp_generator_t * ramp_generator_data,float input){
+	float output=ramp_generator_data->previous_output;
+	if(fabsf(output-input)>=0.001){ //input changed
+		if(ramp_generator_data->ramp_type==linear_ramp){
+			float increment=0.0f; //value to increment in current cycle of control loop
+			//positive ramp
+			if(input>output){
+				increment=ramp_generator_data->incr_per_second_positive*ramp_generator_data->sampling_time;
+				if(input-output>=increment){output=ramp_generator_data->previous_output+increment;}
+				else{output=ramp_generator_data->previous_output+(input-output);}
+			}
+			//negative ramp
+			if(input<output){
+				increment=ramp_generator_data->incr_per_second_negative*ramp_generator_data->sampling_time;
+				if(input-output<=increment){output=ramp_generator_data->previous_output-increment;}
+				else{output=ramp_generator_data->previous_output+(input-output);}
+			}
+		}
+	}
+	else{//do nothing if output finished ramping
+		output=input;
+	}
+
+	if(output>ramp_generator_data->positive_limit)output=ramp_generator_data->positive_limit;
+	if(output<ramp_generator_data->negative_limit)output=ramp_generator_data->negative_limit;
+	ramp_generator_data->previous_output=output;
+	return output;
 }
 /**
  * @brief Limits
@@ -493,7 +606,18 @@ void RMS_current_calculation_loop(void){
 		inverter.I_RMS=sqrtf(((inverter.RMS_current.I_U_square_sum+inverter.RMS_current.I_V_square_sum+inverter.RMS_current.I_W_square_sum)/3.0f)/(float)inverter.RMS_current.rms_count);
 		inverter.RMS_current.rms_count=0;inverter.RMS_current.I_U_square_sum=0.0f;inverter.RMS_current.I_V_square_sum=0.0f;inverter.RMS_current.I_W_square_sum=0.0f;}
 }
+
+/**
+  * @brief  Slow control loop running every n cycles of main motor control loop. Used for speed and position controllers and ramp generators
+  * @param  null
+  * @retval null
+  */
 void motor_control_loop_slow(void){
+	//speed controller
+	if((inverter.control_mode==foc_speed || inverter.control_mode==sensorless_speed) && inverter.state==operation_enabled){
+		inverter.speed_setpoint_after_rg=ramp_generator(&inverter.speed_ramp_generator_data, inverter.speed_setpoint);
+		inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint_after_rg-inverter.filtered_rotor_speed);
+	}
 
 }
 
@@ -518,22 +642,12 @@ void DCBus_voltage_check(void){
 void motor_control_loop(void){
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 
-	inverter.control_mode=(control_mode_t)parameter_set.control_mode;
-
-	inverter.id_current_controller_data.proportional_gain=parameter_set.field_current_ctrl_proportional_gain;
-	inverter.id_current_controller_data.integral_gain=parameter_set.field_current_ctrl_integral_gain;
+	//check if any parameters have been
+	if(inverter.constant_values_update_needed){update_constant_values();}
 	inverter.id_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
 	inverter.id_current_controller_data.output_limit=inverter.DCbus_voltage;
-
-	inverter.iq_current_controller_data.proportional_gain=parameter_set.torque_current_ctrl_proportional_gain;
-	inverter.iq_current_controller_data.integral_gain=parameter_set.torque_current_ctrl_integral_gain;
 	inverter.iq_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
 	inverter.iq_current_controller_data.output_limit=inverter.DCbus_voltage;
-
-	inverter.speed_controller_data.proportional_gain=parameter_set.speed_controller_proportional_gain;
-	inverter.speed_controller_data.integral_gain=parameter_set.speed_controller_integral_gain;
-	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current;
-	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current;
 
 	//check if everything is fine with HOT ADC and reset it if not
 	if(HOT_ADC_read()!=HAL_OK){
@@ -551,8 +665,8 @@ void motor_control_loop(void){
 	}
 
 	//check if DC bus volatge is appropriate
-	if(inverter.DCbus_voltage<inverter.undervoltage_limit && isInverter_running()){inverter_error_trip(undervoltage);}
-	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (!isInverter_running())){HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);inverter.state=switch_on_disabled;}
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && isInverter_running()){inverter_error_trip(undervoltage);HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);inverter.softstart_finished=0;}
+	if(inverter.DCbus_voltage<inverter.undervoltage_limit && (!isInverter_running())){HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);inverter.softstart_finished=0;if(inverter.state!=switch_on_disabled && inverter.state!=not_ready_to_switch_on && inverter.state!=faulted){inverter_error_trip(undervoltage);}}
 	if(inverter.DCbus_voltage>inverter.overvoltage_limit){inverter_error_trip(overvoltage);	}
 
 	//brake chopper control
@@ -590,16 +704,14 @@ void motor_control_loop(void){
 
 	//calculate rotor speed
 	if(inverter.speed_measurement_loop_i>=10){
+		if(inverter.last_rotor_electric_angle==0.0f){inverter.last_rotor_electric_angle=inverter.rotor_electric_angle;} //this prevents overspeed detection on first slow loop execution
 		float speed_calc_angle_delta=inverter.rotor_electric_angle-inverter.last_rotor_electric_angle;
 		inverter.rotor_speed=((speed_calc_angle_delta)/parameter_set.motor_pole_pairs)*9.549296f*(inverter.control_loop_freq/10.0f);
 		//speed(rpm) = ((x(deg)/polepairs)/360deg)/(0,002(s)/60s)
 		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(inverter.control_loop_freq/10);
 		if(inverter.rotor_speed>theoretical_encoder_speed/2.0f){inverter.rotor_speed-=theoretical_encoder_speed;}if(inverter.rotor_speed<(-theoretical_encoder_speed/2.0f)){inverter.rotor_speed+=theoretical_encoder_speed;}
 		inverter.last_rotor_electric_angle = inverter.rotor_electric_angle;
-		//PI speed controller
-		if((inverter.control_mode==foc_speed || inverter.control_mode==sensorless_speed) && isInverter_running()){
-			inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint-inverter.filtered_rotor_speed);
-		}
+		motor_control_loop_slow();
 		inverter.speed_measurement_loop_i=0;
 	}
 	inverter.speed_measurement_loop_i++;
@@ -607,7 +719,7 @@ void motor_control_loop(void){
 
 	//overspeed detection
 	if(inverter.filtered_rotor_speed>parameter_set.motor_max_speed +400.0f || inverter.filtered_rotor_speed<(-parameter_set.motor_max_speed-400.0f)){
-		inverter_error_trip(overspeed);
+		if(inverter.state>0)inverter_error_trip(overspeed);
 	}
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 	//increment stator electric angle based on set frequency if not in foc mode

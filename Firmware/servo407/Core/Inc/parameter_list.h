@@ -16,7 +16,7 @@ typedef struct _parameter_t{
 	uint16_t CANAddress;
 	char name [24];
 	char shortName [8];
-	char description[40];
+	char description[50];
 	uint8_t WriteAllowed; //0-not allowed, 1-allowed during stop, 2-allowed
 	uint8_t precision;
 	char unit [3];

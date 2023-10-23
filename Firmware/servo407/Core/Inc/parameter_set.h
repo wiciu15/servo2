@@ -12,12 +12,24 @@
 #include "inverter.h"
 
 typedef enum {no_feedback,abz_encoder,mitsubishi_encoder,tamagawa_encoder,delta_encoder,panasonic_minas_encoder}motor_feedback_type_t;
+typedef enum _operation_mode_t {
+	manual=-5,
+	u_f=-4,
+	open_loop_current=-1,
+	sensorless_speed=-3,
+	sensorless_torque=-2,
+	foc_torque=4,
+	foc_speed=3,
+	foc_position_profile=1,
+	foc_position_interpolated=7,
+	homing=6
+}operation_mode_t;
 
 typedef struct _parameter_set_t{
 	uint32_t XOR_checksum;
 	uint16_t software_version; //software version on which parameter set was created
 
-	int control_mode;
+	operation_mode_t control_mode;
 
 	float motor_max_current; //current for motor overcurrent trip
 	float motor_nominal_current; //current for torque calculation
@@ -48,6 +60,11 @@ typedef struct _parameter_set_t{
 	float speed_controller_integral_gain;
 	float speed_controller_output_torque_limit; //limit torque, Id is the output so the calcualtion is needed to convert N/m to A
 	float speed_controller_integral_limit; //same conversion like output torque limit
+
+	float speed_limit_positive;
+	float speed_limit_negative;
+	float acceleration_ramp_s; //unit: RPM/s
+	float deceleration_ramp_s;
 }parameter_set_t;
 
 
