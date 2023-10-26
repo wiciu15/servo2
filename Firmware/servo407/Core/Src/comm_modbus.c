@@ -21,6 +21,45 @@ uint16_t modbus_protocol_read(uint32_t la){
 
 	uint8_t local_address=la-40000;
 	uint16_t response=0xFFFF;
+	parameter_t * par=NULL;
+	//search for chosen parameter in internal parameter list
+	for(uint16_t i=0;i<parameter_list_size;i++){
+		if(parameter_list[i].ModbusAddress==local_address){par=&parameter_list[i];break;}
+	}
+	if(par==NULL){
+		//@TODO: address does not exist in parameter list response
+	}else{
+		uint32_t rcv_data=0;
+		parameter_read(par, &rcv_data);
+		switch(par->type){
+		case pFLOAT:{
+			float value = 0.0f;
+			memcpy(&value,&rcv_data,4);
+			if(par->ModbusDataType==mbINT16){response=(int16_t)(value/par->multiplier);}
+			if(par->ModbusDataType==mbUINT16){response=(uint16_t)(value/par->multiplier);}
+			break;
+		}
+		case pBOOL16: case pUINT16:{
+			uint16_t value;
+			memcpy(&value,&rcv_data,2);
+			response=value;
+			break;
+		}
+		case pINT16:{
+			int16_t value=0;
+			memcpy(&value,&rcv_data,2);
+			response=value;
+			break;
+		}
+		default:{
+			//@TODO: trip as software error
+			break;
+		}
+		}
+
+	}
+
+	/*
 	switch (local_address){
 	case 2: response = inverter.error;break;
 	case 3: response = inverter.state;break;
@@ -68,15 +107,54 @@ uint16_t modbus_protocol_read(uint32_t la){
 	case 55: response = parameter_set.speed_controller_proportional_gain*1000.0f;break;
 	case 56: response = parameter_set.speed_controller_integral_gain*1000.0f;break;
 	case 57: response = parameter_set.speed_filter_ts*10000.0f;break;
+	case 58: response = parameter_set.speed_limit_positive;break;
+	case 59: response = parameter_set.speed_limit_negative*-1.0;break;
+	case 60: response = parameter_set.acceleration_ramp_s*100.0f;break;
+	case 61: response = parameter_set.deceleration_ramp_s*100.0f;break;
 
-	}
+	}*/
 	return (uint16_t)response;
 }
 
 uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 {
 	uint8_t local_address=la-40000;
-	switch (local_address){
+	parameter_t * par=NULL;
+	//search for chosen parameter in internal parameter list
+	for(uint16_t i=0;i<parameter_list_size;i++){
+		if(parameter_list[i].ModbusAddress==local_address){par=&parameter_list[i];break;}
+	}
+	if(par==NULL){
+		//@TODO: address does not exist in parameter list response
+	}else{
+		uint32_t dataToWrite=0; //4 bytes of raw data independent of parameter type
+		switch(par->type){
+		case pFLOAT:{
+			float valueToWrite=0.0f;
+			if(par->ModbusDataType==mbINT16){int16_t signedValue = value;valueToWrite=signedValue;}
+			if(par->ModbusDataType==mbUINT16){valueToWrite=value;}
+			valueToWrite=valueToWrite*par->multiplier;
+			memcpy(&dataToWrite,&valueToWrite,4);
+			break;
+		}
+		case pBOOL16: case pUINT16:{
+			dataToWrite=value;
+			break;
+		}
+		case pINT16:{
+			int16_t valueToWrite=0;
+			valueToWrite=(int16_t)value;
+			memcpy(&dataToWrite,&valueToWrite,2);
+			break;
+		}
+		default:{
+			//@TODO: trip as software error
+			break;
+		}
+		}
+		parameter_write(par, &dataToWrite);
+	}
+	/*switch (local_address){
 
 	case 2://error register
 	{if(value==0){inverter_error_reset();}break; //acknowledge error
@@ -327,11 +405,39 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 			parameter_set.speed_filter_ts=(float)received_value/10000.0f;
 		}
 		break;}
+	case 58:
+		{
+			uint16_t received_value = value;
+			if(received_value>=1 && received_value<=10000){
+				parameter_set.speed_limit_positive=(float)received_value;
+			}
+			break;}
+	case 59:
+			{
+				uint16_t received_value = value;
+				if(received_value>=1 && received_value<=10000){
+					parameter_set.speed_limit_negative=(float)received_value*(-1.0f);
+				}
+				break;}
+	case 60:
+				{
+					uint16_t received_value = value;
+					if(received_value>=1 && received_value<=10000){
+						parameter_set.acceleration_ramp_s=(float)received_value/100.0f;
+					}
+					break;}
+	case 61:
+					{
+						uint16_t received_value = value;
+						if(received_value>=1 && received_value<=10000){
+							parameter_set.deceleration_ramp_s=(float)received_value/100.0f;
+						}
+						break;}
 
 	default:
 		//if not handled inside switch, then read-only parameter
 		break;
-	}
+	}*/
 	if(local_address>=20 || local_address==5){
 		//@TODO: instead of writing on each parameter change give user option to write whole parameter set on demand
 		if(save_parameter_set_to_eeprom()!=HAL_OK){
@@ -339,7 +445,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 		}
 		inverter.constant_values_update_needed=1;
 	}
-return value;
+	return value;
 }
 
 int mbus_send(const mbus_t context,const uint8_t* data, const uint16_t size){

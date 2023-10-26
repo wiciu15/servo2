@@ -59,9 +59,9 @@ const parameter_t monitor_list[]={ //parameters shown in monitor menu
 		{.number=3,.ModbusAddress=3,.CANAddress=1111,.name={"Magnetizing current"},.shortName={"I mag"},.description={"Magnetizing RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplier=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
 		{.number=4,.ModbusAddress=4,.CANAddress=1111,.name={"Torque current"},.shortName={"I trq"},.description={"Torque-producing RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplier=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
 		{.number=5,.ModbusAddress=5,.CANAddress=1111,.name={"Motor torque"},.shortName={"Mot trq"},.description={"Actaul motor torque in %"},.WriteAllowed=0,.precision=1,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplier=0.01f,.minValue=-1000.0f,.maxValue=1000.0f,.defaultValue=0.0f},
-		{.number=6,.ModbusAddress=6,.CANAddress=1111,.name={"Actual position L"},.shortName={"Act posL"},.description={"Actual rotor position low word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplier=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
+		{.number=6,.ModbusAddress=6,.CANAddress=1111,.name={"Actual position L"},.shortName={"Act posL"},.description={"Actual axis position low word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplier=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=7,.ModbusAddress=7,.CANAddress=1111,.name={"Actual position H"},.shortName={"Act posH"},.description={"Actual axis position high word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplier=1.0f,.minValue=-32767.0f,.maxValue=32767.0f,.defaultValue=0.0f},
-		{.number=8,.ModbusAddress=8,.CANAddress=1111,.name={"Target position L"},.shortName={"Tht posL"},.description={"Actual rotor position high word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplier=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
+		{.number=8,.ModbusAddress=8,.CANAddress=1111,.name={"Target position L"},.shortName={"Tgt posL"},.description={"Target axis position low word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pINT16,.multiplier=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=9,.ModbusAddress=9,.CANAddress=1111,.name={"Target position H"},.shortName={"Tgt posH"},.description={"Target axis position high word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplier=1.0f,.minValue=-32767.0f,.maxValue=32767.0f,.defaultValue=0.0f},
 		{.number=10,.ModbusAddress=10,.CANAddress=1111,.name={"Motor voltage"},.shortName={"U mot"},.description={"Actual motor RMS voltage"},.WriteAllowed=0,.precision=1,.unit="V",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplier=0.1f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=11,.ModbusAddress=11,.CANAddress=1111,.name={"DC bus voltage"},.shortName={"DC bus"},.description={"Actual voltage in intermediate circuit"},.WriteAllowed=0,.precision=1,.unit="V",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplier=0.1f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
@@ -82,9 +82,11 @@ const parameter_t monitor_list[]={ //parameters shown in monitor menu
 		{.number=31,.ModbusAddress=31,.CANAddress=1111,.name={"Control register"},.shortName={"Ctl reg"},.description={"Control register"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pBOOL16,.multiplier=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=32,.ModbusAddress=32,.CANAddress=1111,.name={"Target speed"},.shortName={"Tgt spd"},.description={"Target speed"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbINT16,.type=pINT16,.multiplier=1.0f,.minValue=-30000.0f,.maxValue=30000.0f,.defaultValue=0.0f},
 		{.number=33,.ModbusAddress=33,.CANAddress=1111,.name={"Target torque"},.shortName={"Tgt trq"},.description={"Target torque"},.WriteAllowed=1,.precision=2,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplier=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
-		{.number=34,.ModbusAddress=34,.CANAddress=1111,.name={"Field torque"},.shortName={"Fld trq"},.description={"Target field"},.WriteAllowed=1,.precision=2,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplier=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
+		{.number=34,.ModbusAddress=34,.CANAddress=1111,.name={"Target field"},.shortName={"Fld trq"},.description={"Target field"},.WriteAllowed=1,.precision=2,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplier=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
 		{.number=35,.ModbusAddress=35,.CANAddress=1111,.name={"Open loop freq"},.shortName={"OL freq"},.description={"Actual output frequency in uf/open loop mode"},.WriteAllowed=0,.precision=1,.unit="Hz",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplier=0.1f,.minValue=-650.0f,.maxValue=650.0f,.defaultValue=0.0f},
 		{.number=36,.ModbusAddress=36,.CANAddress=1111,.name={"Target open loop freq"},.shortName={"Freq tgt"},.description={"Output frequency target in uf/open loop mode"},.WriteAllowed=1,.precision=1,.unit="Hz",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplier=0.1f,.minValue=-650.0f,.maxValue=650.0f,.defaultValue=0.0f},
+		{.number=37,.ModbusAddress=37,.CANAddress=1111,.name={"Target voltage"},.shortName={"Tgt U"},.description={"Output voltage target in manual mode"},.WriteAllowed=1,.precision=1,.unit="Hz",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplier=0.1f,.minValue=-650.0f,.maxValue=650.0f,.defaultValue=0.0f},
+
 
 		{.number=40,.ModbusAddress=40,.CANAddress=1111,.name={"Encoder pulse"},.shortName={"Enc puls"},.description={"One turn absolute encoder pulse"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplier=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=41,.ModbusAddress=41,.CANAddress=1111,.name={"Stator Electric Angle"},.shortName={"Fld ang"},.description={"Actual stator field electric angle"},.WriteAllowed=1,.precision=1,.unit="deg",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplier=0.1f,.minValue=0.0f,.maxValue=359.9f,.defaultValue=0.0f},
@@ -106,8 +108,8 @@ uint16_t monitor_list_size=sizeof(monitor_list)/sizeof(parameter_t);
  * @retval HAL_OK if data copied fine, HAL ERROR if parameter number is not implemented and nothing was copied
  */
 
-HAL_StatusTypeDef parameter_read(parameter_t par , uint32_t * ptrToReturnValue){
-	switch(par.number){
+HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue){
+	switch(par->number){
 	case 1:{int16_t value =(int16_t)inverter.filtered_rotor_speed;memcpy(ptrToReturnValue,&value,2);break;}
 	case 2:{float value=inverter.I_RMS;memcpy(ptrToReturnValue,&value,4);break;}
 	case 3:{float value=(inverter.I_d_filtered/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
@@ -137,24 +139,84 @@ HAL_StatusTypeDef parameter_read(parameter_t par , uint32_t * ptrToReturnValue){
 		memcpy(ptrToReturnValue,&value,2);
 	break;
 	}
+	case 31:{{uint16_t value=0x0FFF;memcpy(ptrToReturnValue,&value,2);break;}}
+	case 32:{int16_t value=inverter.speed_setpoint;memcpy(ptrToReturnValue,&value,2);break;}
+	case 33:{float value=(inverter.torque_current_setpoint/parameter_set.motor_nominal_current)*100.0f;memcpy(ptrToReturnValue,&value,4);break;}
+	case 34:{float value=(inverter.field_current_setpoint/parameter_set.motor_nominal_current)*100.0f;memcpy(ptrToReturnValue,&value,4);break;}
+	case 35:{float value=(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq));memcpy(ptrToReturnValue,&value,4);break;}
+	case 36:{float value=(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq));memcpy(ptrToReturnValue,&value,4);break;} //implement target open loop speed
+
+	case 40:{uint16_t value=(inverter.encoder_raw_position);memcpy(ptrToReturnValue,&value,2);break;}
+	case 41:{float value=(inverter.stator_electric_angle*(180.0f/_PI));memcpy(ptrToReturnValue,&value,4);break;}
+	case 42:{float value=(inverter.rotor_electric_angle*(180.0f/_PI));memcpy(ptrToReturnValue,&value,4);break;}
+	case 43:{float value=(inverter.torque_angle*(180.0f/_PI));memcpy(ptrToReturnValue,&value,4);break;}
+	case 44:{float value=(inverter.I_U);memcpy(ptrToReturnValue,&value,4);break;}
+	case 45:{float value=(inverter.I_V);memcpy(ptrToReturnValue,&value,4);break;}
+	case 46:{float value=(inverter.I_W);memcpy(ptrToReturnValue,&value,4);break;}
+
+
+
 	default:{return HAL_ERROR;break;}
 	}
 	return HAL_OK;
 }
-HAL_StatusTypeDef parameter_write(parameter_t par, uint32_t * pValue){
+HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 	HAL_StatusTypeDef status = HAL_OK;
-	switch(par.WriteAllowed){
+	switch(par->WriteAllowed){
 	case 0:{status = HAL_ERROR;break;} //read only
 	case 2:{
 		if(inverter.state==operation_enabled){status = HAL_BUSY;break;}	}//if write allowed on stop only break out from switch, otherwise fall through to write allowed
 	case 1:{ //write allowed
-		switch(par.number){
+		switch(par->number){
 		case 31:{ //control register
-			inverter_state_t rcvData;
+			uint16_t value = (uint16_t)*pValue;
+			if(!bitcheck(value,1)){//enable voltage bit =0 - disable inverter, transition 7,9,10,12
+				inverter_disable();
+			}
+			if(bitcheck(value,1) && bitcheck(value,2) && inverter.state==switch_on_disabled){//enable voltage bit =1 - ready to switch on, transition 2
+				if(!inverter.softstart_finished)inverter_error_trip(undervoltage);
+				if(inverter.softstart_finished)inverter.state=ready_to_switch_on;
+			}
+			if(bitcheck(value,0) && bitcheck(value,2)&& inverter.state==ready_to_switch_on){ //switch on bit =1 - switched on state, transition 3
+				inverter.state=switched_on;
+			}
+			if(!bitcheck(value,0) &&  bitcheck(value,2) && (inverter.state==switched_on ||inverter.state==operation_enabled || inverter.state==quickstop_active)){ //switch on bit = 0
+				inverter.state=ready_to_switch_on;
+				inverter_disable();
+			}
+			if(!bitcheck(value,2)){ //bit 2 quickstop has to be high in other transitions, if low go to quickstop when operation enabled, otherwise switch on disabled
+				if(inverter.state==operation_enabled){inverter_disable();inverter.state=quickstop_active;}
+				if(inverter.state==ready_to_switch_on || inverter.state==switched_on);
+			}
+			if(bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0)&& (inverter.state==switched_on||inverter.state==quickstop_active)){ //transition 4
+				inverter_enable();inverter.state=operation_enabled;
+			}
+			if(!bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0) && inverter.state == operation_enabled){
+				inverter_disable();inverter.state=switched_on;
+			}
+			if(bitcheck(value,7) && inverter.state==faulted){
+				inverter_error_reset();
+			}
+			break;
 		}
+		case 32:{ //target speed
+			int16_t value = (int16_t)*pValue;
+			if(value>8000||value<-8000||inverter.control_mode!=foc_speed){status = HAL_BUSY;break;}else{
+				inverter.speed_setpoint=value;break;
+			}
+		}
+		case 33: //target torque
+		{
+			float value = 0.0f;
+			memcpy(&value,pValue,4);
+			if(value>300.0f||value<-300.0f||inverter.control_mode!=foc_torque){status = HAL_BUSY;break;}else{
+				inverter.torque_current_setpoint=(value/100.0f)*parameter_set.motor_nominal_current;break;
+			}
+		}
+
 		default:{status=HAL_ERROR;break;}
-		}
 	}
 	}
-	return status;
+}
+return status;
 }

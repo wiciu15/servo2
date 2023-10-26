@@ -298,7 +298,7 @@ void menu_monitor_refresh(){
 		ssd1306_SetCursor(70, ((i%5)*9)+14);
 		char  stringbuf [30];
 		uint32_t rawvalue=0;
-		if(parameter_read(monitor_list[i], &rawvalue)==HAL_OK){
+		if(parameter_read(&monitor_list[i], &rawvalue)==HAL_OK){
 		switch(monitor_list[i].type){
 		case pFLOAT:{
 			float value;
