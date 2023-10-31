@@ -30,7 +30,7 @@ typedef struct _parameter_t{
 		pINT16,
 		pFLOAT
 	}type;
-	float multiplier;
+	float multiplierMB;
 	float defaultValue;
 	float minValue;
 	float maxValue;

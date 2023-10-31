@@ -30,7 +30,7 @@ parameter_set_t parameter_set={
 		.motor_max_current=9.5f, //14.3 according to datasheet
 		.motor_nominal_current=6.8f,
 		.motor_pole_pairs=5, //4 for abb motor 5 for bch and mitsubishi hf-kn43
-		.motor_max_voltage=170.0f,
+		.motor_voltage=170.0f,
 		.motor_max_torque=7.17f,
 		.motor_nominal_torque=2.39f,
 		.motor_nominal_speed=2000.0f,
@@ -44,8 +44,6 @@ parameter_set_t parameter_set={
 		.encoder_resolution=4000,
 		.encoder_polarity=1,
 
-
-		.current_filter_ts=0.0001f,
 		.torque_current_ctrl_proportional_gain=11.0f, //gain in V/A
 		.torque_current_ctrl_integral_gain=1000.0f,
 		.field_current_ctrl_proportional_gain=11.0f,
@@ -58,7 +56,7 @@ parameter_set_t parameter_set={
 		.speed_controller_integral_limit=1.0f, //1.0 is for example, valid iq current gets copied from motor max current
 
 		.speed_limit_positive=3000.0f,
-		.speed_limit_negative=-3000.0f,
+		.speed_limit_negative=3000.0f,
 		.acceleration_ramp_s=0.1f, //unit: s/1000RPM
 		.deceleration_ramp_s=0.1f
 
@@ -427,7 +425,7 @@ float ramp_generator(ramp_generator_t * ramp_generator_data,float input){
 	if(fabsf(output-input)>=0.001){ //input changed
 		if(ramp_generator_data->ramp_type==linear_ramp){
 			float increment=0.0f; //value to increment in current cycle of control loop
-			//positive ramp
+			//positive ramp @TODO: ramp needs to be dependend on abs value chage direcion, if braking from negative speed the positive ramp is used which is not good
 			if(input>output){
 				increment=ramp_generator_data->incr_per_second_positive*ramp_generator_data->sampling_time;
 				if(input-output>=increment){output=ramp_generator_data->previous_output+increment;}
@@ -446,7 +444,7 @@ float ramp_generator(ramp_generator_t * ramp_generator_data,float input){
 	}
 
 	if(output>ramp_generator_data->positive_limit)output=ramp_generator_data->positive_limit;
-	if(output<ramp_generator_data->negative_limit)output=ramp_generator_data->negative_limit;
+	if(output<(ramp_generator_data->negative_limit*-1.0f))output=(ramp_generator_data->negative_limit*-1.0f);
 	ramp_generator_data->previous_output=output;
 	return output;
 }
@@ -648,6 +646,13 @@ void motor_control_loop(void){
 	inverter.id_current_controller_data.output_limit=inverter.DCbus_voltage;
 	inverter.iq_current_controller_data.antiwindup_limit=inverter.DCbus_voltage;
 	inverter.iq_current_controller_data.output_limit=inverter.DCbus_voltage;
+	//clamp setpoint values to safe levels in case something bad happened earlier
+	if(inverter.torque_current_setpoint>parameter_set.motor_max_current){inverter.torque_current_setpoint=parameter_set.motor_max_current;}
+	if(inverter.torque_current_setpoint< ((-1.0f)*parameter_set.motor_max_current)){inverter.torque_current_setpoint=(-1.0f*parameter_set.motor_max_current);}
+	if(inverter.speed_setpoint>parameter_set.motor_max_speed){inverter.speed_setpoint=parameter_set.motor_max_speed;}
+	if(inverter.speed_setpoint< ((-1.0f)*parameter_set.motor_max_speed)){inverter.speed_setpoint=(-1.0f*parameter_set.motor_max_speed);}
+
+
 
 	//check if everything is fine with HOT ADC and reset it if not
 	if(HOT_ADC_read()!=HAL_OK){
@@ -732,7 +737,7 @@ void motor_control_loop(void){
 
 	//if in u/f mode calculate voltage for given frequency
 	if(inverter.control_mode==u_f){
-		inverter.output_voltage=(inverter.stator_field_speed/(parameter_set.motor_base_frequency*(_2_PI/inverter.control_loop_freq)))*parameter_set.motor_max_voltage;
+		inverter.output_voltage=(inverter.stator_field_speed/(parameter_set.motor_base_frequency*(_2_PI/inverter.control_loop_freq)))*parameter_set.motor_voltage;
 	}
 	//calculate field and torque currents
 	if(inverter.control_mode>=1){ // foc based modes
@@ -744,13 +749,13 @@ void motor_control_loop(void){
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 
 	//low pass filter of current vector values
-	inverter.I_d_filtered = LowPassFilter(parameter_set.current_filter_ts, inverter.I_d, &inverter.I_d_last);
-	inverter.I_q_filtered = LowPassFilter(parameter_set.current_filter_ts, inverter.I_q, &inverter.I_q_last);
+	inverter.I_d_filtered = LowPassFilter(0.00007f, inverter.I_d, &inverter.I_d_last);
+	inverter.I_q_filtered = LowPassFilter(0.00007f, inverter.I_q, &inverter.I_q_last);
 
 
 	//PI control of voltage vector in open loop
 	if(inverter.control_mode==open_loop_current && isInverter_running()){
-		inverter.U_q = PI_control(&inverter.iq_current_controller_data,inverter.torque_current_setpoint-inverter.I_q_filtered);
+		inverter.U_q = PI_control(&inverter.iq_current_controller_data,0-inverter.I_q_filtered);
 		inverter.U_d = PI_control(&inverter.id_current_controller_data,inverter.field_current_setpoint-inverter.I_d_filtered);
 		inv_park_transform(inverter.U_d, inverter.U_q, inverter.stator_electric_angle, &inverter.output_voltage_vector.U_Alpha, &inverter.output_voltage_vector.U_Beta);
 	}

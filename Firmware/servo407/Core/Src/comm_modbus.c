@@ -19,7 +19,7 @@ extern osThreadId_t taskModbusUSBHandle;
 
 uint16_t modbus_protocol_read(uint32_t la){
 
-	uint8_t local_address=la-40000;
+	uint16_t local_address=la-40000;
 	uint16_t response=0xFFFF;
 	parameter_t * par=NULL;
 	//search for chosen parameter in internal parameter list
@@ -35,8 +35,8 @@ uint16_t modbus_protocol_read(uint32_t la){
 		case pFLOAT:{
 			float value = 0.0f;
 			memcpy(&value,&rcv_data,4);
-			if(par->ModbusDataType==mbINT16){response=(int16_t)(value/par->multiplier);}
-			if(par->ModbusDataType==mbUINT16){response=(uint16_t)(value/par->multiplier);}
+			if(par->ModbusDataType==mbINT16){response=(int16_t)(value/par->multiplierMB);}
+			if(par->ModbusDataType==mbUINT16){response=(uint16_t)(value/par->multiplierMB);}
 			break;
 		}
 		case pBOOL16: case pUINT16:{
@@ -59,66 +59,12 @@ uint16_t modbus_protocol_read(uint32_t la){
 
 	}
 
-	/*
-	switch (local_address){
-	case 2: response = inverter.error;break;
-	case 3: response = inverter.state;break;
-	case 5: response = inverter.control_mode;break;
-	case 6:{if(inverter.control_mode==manual || inverter.control_mode==open_loop_current){response = (int16_t)(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq))*10;}if(inverter.control_mode>=1){response = inverter.speed_setpoint;} break;}
-	case 7:{if(inverter.control_mode==manual || inverter.control_mode==u_f){response = (uint16_t)(inverter.output_voltage*10.0f);}if(inverter.control_mode==open_loop_current || inverter.control_mode >=1){response = (int16_t)(((inverter.torque_current_setpoint)/parameter_set.motor_nominal_current)*1000.0f);}break;}
-	case 8:{if(inverter.control_mode==open_loop_current || inverter.control_mode>=1){response = (int16_t)(((inverter.field_current_setpoint)/parameter_set.motor_nominal_current)*1000.0f);}break;}
-	case 10: response = (int16_t)(inverter.I_RMS *100.0f);break;
-	case 11: response = (uint16_t)(inverter.stator_electric_angle*(180.0f/_PI)*100.0f);break;
-	case 12: response = (int16_t)(inverter.torque_angle*(180.0f/_PI));break;
-	case 13: response = (int16_t)(inverter.filtered_rotor_speed);break;
-	case 14: response = (uint16_t)(inverter.DCbus_voltage*10.0f);break;
-	case 15: response = (int16_t)((inverter.I_d_filtered/_SQRT2)*100.0f);break;
-	case 16: response = (int16_t)((inverter.I_q_filtered/_SQRT2)*100.0f);break;
-	case 17: response = inverter.encoder_raw_position;break;
-	case 18: response = (inverter.output_voltage/_SQRT2)*10.0f;break;
-	case 19: response = (int16_t)(inverter.IGBT_temp*10.0f);break;
-
-	case 20: response = parameter_set.motor_feedback_type;break;
-	case 21: response = (int16_t)(parameter_set.encoder_electric_angle_correction*(180.0f/_PI));break;
-	case 22: {if(parameter_set.encoder_polarity){ //if encoder direction flipped return negative number
-		response =  (int16_t)parameter_set.encoder_resolution/-2;
-	}else{
-		response = (int16_t)parameter_set.encoder_resolution/2;
-	}
-	break;}
-	//case 23: if(parameter_set.motor_feedback_type==mitsubishi_encoder){response = mitsubishi_encoder_data.excessive_acceleration_error_count;}if(parameter_set.motor_feedback_type==tamagawa_encoder){response = tamagawa_encoder_data.excessive_acceleration_error_count;}break;
-	case 31: response = parameter_set.motor_pole_pairs;break;
-	case 32: response = (parameter_set.motor_nominal_current/_SQRT2)*100.0f;break;
-	case 33: response = (parameter_set.motor_max_current/parameter_set.motor_nominal_current)*100.0f;break;
-	case 34: response = (parameter_set.motor_max_current/_SQRT2)*100.0f;break;
-	case 35: response = (parameter_set.motor_max_voltage/_SQRT2);break;
-	case 36: response = parameter_set.motor_nominal_torque*100.0f;break;
-	case 37: response = parameter_set.motor_nominal_speed;break;
-	case 38: response = parameter_set.motor_max_speed;break;
-	case 39: response = parameter_set.motor_rs*1000.0f;break;
-	case 40: response = parameter_set.motor_ls*1000000.0f;break;
-	case 41: response = parameter_set.motor_K*100000.0f;break;
-	case 42: response = parameter_set.motor_base_frequency*100;break;
-	case 50: response = parameter_set.torque_current_ctrl_proportional_gain*10.0f;break;
-	case 51: response = parameter_set.torque_current_ctrl_integral_gain;break;
-	case 52: response = parameter_set.field_current_ctrl_proportional_gain*10.0f;break;
-	case 53: response = parameter_set.field_current_ctrl_integral_gain;break;
-	case 54: response = parameter_set.current_filter_ts*10000.0f;break;
-	case 55: response = parameter_set.speed_controller_proportional_gain*1000.0f;break;
-	case 56: response = parameter_set.speed_controller_integral_gain*1000.0f;break;
-	case 57: response = parameter_set.speed_filter_ts*10000.0f;break;
-	case 58: response = parameter_set.speed_limit_positive;break;
-	case 59: response = parameter_set.speed_limit_negative*-1.0;break;
-	case 60: response = parameter_set.acceleration_ramp_s*100.0f;break;
-	case 61: response = parameter_set.deceleration_ramp_s*100.0f;break;
-
-	}*/
 	return (uint16_t)response;
 }
 
 uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 {
-	uint8_t local_address=la-40000;
+	uint16_t local_address=la-40000;
 	parameter_t * par=NULL;
 	//search for chosen parameter in internal parameter list
 	for(uint16_t i=0;i<parameter_list_size;i++){
@@ -133,7 +79,7 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 			float valueToWrite=0.0f;
 			if(par->ModbusDataType==mbINT16){int16_t signedValue = value;valueToWrite=signedValue;}
 			if(par->ModbusDataType==mbUINT16){valueToWrite=value;}
-			valueToWrite=valueToWrite*par->multiplier;
+			valueToWrite=valueToWrite*par->multiplierMB;
 			memcpy(&dataToWrite,&valueToWrite,4);
 			break;
 		}
@@ -153,297 +99,6 @@ uint16_t modbus_protocol_write(uint32_t la, uint16_t value)
 		}
 		}
 		parameter_write(par, &dataToWrite);
-	}
-	/*switch (local_address){
-
-	case 2://error register
-	{if(value==0){inverter_error_reset();}break; //acknowledge error
-	break;}
-	case 3: //control register
-	{
-		if(!bitcheck(value,1)){//enable voltage bit =0 - disable inverter, transition 7,9,10,12
-			inverter_disable();
-		}
-		if(bitcheck(value,1) && bitcheck(value,2) && inverter.state==switch_on_disabled){//enable voltage bit =1 - ready to switch on, transition 2
-			if(!inverter.softstart_finished)inverter_error_trip(undervoltage);
-			if(inverter.softstart_finished)inverter.state=ready_to_switch_on;
-		}
-		if(bitcheck(value,0) && bitcheck(value,2)&& inverter.state==ready_to_switch_on){ //switch on bit =1 - switched on state, transition 3
-			inverter.state=switched_on;
-		}
-		if(!bitcheck(value,0) &&  bitcheck(value,2) && (inverter.state==switched_on ||inverter.state==operation_enabled || inverter.state==quickstop_active)){ //switch on bit = 0
-			inverter.state=ready_to_switch_on;
-			inverter_disable();
-		}
-		if(!bitcheck(value,2)){ //bit 2 quickstop has to be high in other transitions, if low go to quickstop when operation enabled, otherwise switch on disabled
-			if(inverter.state==operation_enabled){inverter_disable();inverter.state=quickstop_active;}
-			if(inverter.state==ready_to_switch_on || inverter.state==switched_on);
-		}
-		if(bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0)&& (inverter.state==switched_on||inverter.state==quickstop_active)){ //transition 4
-			inverter_enable();inverter.state=operation_enabled;
-		}
-		if(!bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0) && inverter.state == operation_enabled){
-			inverter_disable();inverter.state=switched_on;
-		}
-		if(bitcheck(value,7) && inverter.state==faulted){
-			inverter_error_reset();
-		}
-		break;
-	}
-
-	case 5: //operation mode register
-	{int16_t received_value=value;
-	if(received_value<=7 && received_value>=-5 && received_value!=0){parameter_set.control_mode=received_value;}
-	break;
-	}
-
-	case 6: //speed setpoint in rpm
-	{int16_t received_speed=value;
-	if(inverter.control_mode==manual || inverter.control_mode==u_f || inverter.control_mode==open_loop_current){
-		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.stator_field_speed = ((float)received_speed*(_2_PI/inverter.control_loop_freq))/10.0f;}
-	}
-	if(inverter.control_mode>=1){
-		if((received_speed)<=5000 && (received_speed)>=(-5000) ){inverter.speed_setpoint = received_speed;}
-	}
-	break;}
-
-	case 7: //set output voltage in manual/torque in foc
-	{if(inverter.control_mode==manual){
-		if(value<=1000 && value>=0){inverter.output_voltage = ((float)value/1000.0f)*inverter.DCbus_voltage;}
-		}
-	if(inverter.control_mode==open_loop_current || inverter.control_mode==foc_torque ){
-		int16_t received_torque_setpoint = (int16_t)value;
-		if(received_torque_setpoint>=-3000 && received_torque_setpoint<=3000){
-				inverter.torque_current_setpoint=(received_torque_setpoint/1000.0f)*(parameter_set.motor_nominal_current);
-		}
-	}
-	break;
-	}
-
-	case 8:
-	{
-		if(inverter.control_mode==open_loop_current || inverter.control_mode>=1){
-			int16_t received_field_setpoint = value;
-			if(received_field_setpoint>=-1000 && received_field_setpoint<=1000){
-				inverter.field_current_setpoint=(received_field_setpoint/1000.0f)*(parameter_set.motor_nominal_current);
-			}
-		}
-		break;
-	}
-
-	//feedback type
-	case 20:
-	{
-		uint16_t received_feedback_type = value;
-		if(received_feedback_type<=6 && !isInverter_running()){
-			parameter_set.motor_feedback_type=value;}
-		break;}
-	//Encoder angle correction
-	case 21:
-	{
-		int16_t received_value = value;
-		if(received_value>=-180 && received_value<=180){
-			parameter_set.encoder_electric_angle_correction=received_value/(180.0f/_PI);
-		}
-		break;}
-	//Encoder resolution
-	case 22:
-	{
-		int16_t received_value = value;
-		if(received_value>=500 && received_value<=32000){
-			parameter_set.encoder_resolution=received_value*2;
-			parameter_set.encoder_polarity=0;
-		}
-		if(received_value<=-500 && received_value>=-32000){
-			parameter_set.encoder_resolution=-received_value*2;
-			parameter_set.encoder_polarity=1;
-		}
-		break;}
-	//Motor pole pairs
-	case 31:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=12){
-			parameter_set.motor_pole_pairs=received_value;
-		}
-		break;}
-	//Motor nominal current
-	case 32:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=1600){
-			parameter_set.motor_nominal_current=(received_value/100.0f)*_SQRT2;
-		}
-		break;}
-	//Motor overload factor
-	case 33:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=400){
-			parameter_set.motor_max_current=parameter_set.motor_nominal_current*(received_value/100.0f);
-		}
-		break;}
-	//Motor max voltage
-	case 35:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=500){
-			parameter_set.motor_max_voltage=((float)received_value)*_SQRT2;
-		}
-		break;}
-	//Motor nominal torque
-	case 36:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=4000){
-			parameter_set.motor_nominal_torque=(float)received_value/100.0f;
-		}
-		break;}
-	//Motor nominal speed
-	case 37:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=6000){
-			parameter_set.motor_nominal_speed=received_value;
-		}
-		break;}
-	case 38:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=8000){
-			parameter_set.motor_max_speed=received_value;
-		}
-		break;}
-	//Motor Rs
-	case 39:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=60000){
-			parameter_set.motor_rs=(float)received_value/1000.0f;
-		}
-		break;}
-	//Motor Ls
-	case 40:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=60000){
-			parameter_set.motor_ls=(float)received_value/1000000.0f;
-		}
-		break;}
-	//Motor Kv
-	case 41:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=60000){
-			parameter_set.motor_K=(float)received_value/100000.0f;
-		}
-		break;}
-	//motor base frequency for u/f control
-	case 42:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=60000){
-			parameter_set.motor_base_frequency=((float)received_value/100.0f);
-		}
-		break;}
-	case 50:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=900){
-			parameter_set.torque_current_ctrl_proportional_gain=(float)received_value/10.0f;
-		}
-		break;}
-	case 51:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=20000){
-			parameter_set.torque_current_ctrl_integral_gain=(float)received_value;
-		}
-		break;}
-	case 52:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=900){
-			parameter_set.field_current_ctrl_proportional_gain=(float)received_value/10.0f;
-		}
-		break;}
-
-	case 53:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=20000){
-			parameter_set.field_current_ctrl_integral_gain=(float)received_value;
-		}
-		break;}
-	//current filter
-	case 54:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=10000){
-			parameter_set.current_filter_ts=(float)received_value/10000.0f;
-		}
-		break;}
-	case 55:
-		{
-			uint16_t received_value = value;
-			if(received_value>=1 && received_value<=20000){
-				parameter_set.speed_controller_proportional_gain=(float)received_value/1000.0f;
-			}
-			break;}
-	case 56:
-		{
-			uint16_t received_value = value;
-			if(received_value>=1 && received_value<=20000){
-				parameter_set.speed_controller_integral_gain=(float)received_value/1000.0f;
-			}
-			break;}
-	//speed filter
-	case 57:
-	{
-		uint16_t received_value = value;
-		if(received_value>=1 && received_value<=10000){
-			parameter_set.speed_filter_ts=(float)received_value/10000.0f;
-		}
-		break;}
-	case 58:
-		{
-			uint16_t received_value = value;
-			if(received_value>=1 && received_value<=10000){
-				parameter_set.speed_limit_positive=(float)received_value;
-			}
-			break;}
-	case 59:
-			{
-				uint16_t received_value = value;
-				if(received_value>=1 && received_value<=10000){
-					parameter_set.speed_limit_negative=(float)received_value*(-1.0f);
-				}
-				break;}
-	case 60:
-				{
-					uint16_t received_value = value;
-					if(received_value>=1 && received_value<=10000){
-						parameter_set.acceleration_ramp_s=(float)received_value/100.0f;
-					}
-					break;}
-	case 61:
-					{
-						uint16_t received_value = value;
-						if(received_value>=1 && received_value<=10000){
-							parameter_set.deceleration_ramp_s=(float)received_value/100.0f;
-						}
-						break;}
-
-	default:
-		//if not handled inside switch, then read-only parameter
-		break;
-	}*/
-	if(local_address>=20 || local_address==5){
-		//@TODO: instead of writing on each parameter change give user option to write whole parameter set on demand
-		if(save_parameter_set_to_eeprom()!=HAL_OK){
-			inverter_error_trip(eeprom_error);
-		}
-		inverter.constant_values_update_needed=1;
 	}
 	return value;
 }
