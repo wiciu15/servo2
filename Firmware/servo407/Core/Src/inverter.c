@@ -244,6 +244,12 @@ void inverter_enable(){
 		HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
 		HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_3);
 		HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+		inverter.state=operation_enabled;
+		//@TODO: catch rotor on the fly is not always working, propably Iq current controller output needs to be pre-set with predicted back-emf at actual speed
+		if(inverter.control_mode==foc_speed){
+			inverter.speed_ramp_generator_data.previous_output = inverter.filtered_rotor_speed;
+			inverter.speed_setpoint_after_rg = inverter.filtered_rotor_speed;
+		}
 	}
 }
 
@@ -425,17 +431,35 @@ float ramp_generator(ramp_generator_t * ramp_generator_data,float input){
 	if(fabsf(output-input)>=0.001){ //input changed
 		if(ramp_generator_data->ramp_type==linear_ramp){
 			float increment=0.0f; //value to increment in current cycle of control loop
-			//positive ramp @TODO: ramp needs to be dependend on abs value chage direcion, if braking from negative speed the positive ramp is used which is not good
-			if(input>output){
-				increment=ramp_generator_data->incr_per_second_positive*ramp_generator_data->sampling_time;
-				if(input-output>=increment){output=ramp_generator_data->previous_output+increment;}
-				else{output=ramp_generator_data->previous_output+(input-output);}
+			//positive rotation
+			if(output>=0.0f){
+				//acceleration ramp
+				if(input>output){
+					increment=ramp_generator_data->incr_per_second_positive*ramp_generator_data->sampling_time;
+					if(input-output>=increment){output=ramp_generator_data->previous_output+increment;}
+					else{output=ramp_generator_data->previous_output+(input-output);}
+				}
+				//deceleration ramp
+				if(input<output){
+					increment=ramp_generator_data->incr_per_second_negative*ramp_generator_data->sampling_time;
+					if(input-output<=((-1.0f)*increment)){output=ramp_generator_data->previous_output-increment;}
+					else{output=ramp_generator_data->previous_output+(input-output);}
+				}
 			}
-			//negative ramp
-			if(input<output){
-				increment=ramp_generator_data->incr_per_second_negative*ramp_generator_data->sampling_time;
-				if(input-output<=increment){output=ramp_generator_data->previous_output-increment;}
-				else{output=ramp_generator_data->previous_output+(input-output);}
+			//negative rotation
+			if( output<0.0f){
+				//acceleration ramp
+				if(input>output){
+					increment=ramp_generator_data->incr_per_second_negative*ramp_generator_data->sampling_time;
+					if(input-output>=increment){output=ramp_generator_data->previous_output+increment;}
+					else{output=ramp_generator_data->previous_output+(input-output);}
+				}
+				//deceleration ramp
+				if(input<output){
+					increment=ramp_generator_data->incr_per_second_positive*ramp_generator_data->sampling_time;
+					if(input-output<=((-1.0f)*increment)){output=ramp_generator_data->previous_output-increment;}
+					else{output=ramp_generator_data->previous_output+(input-output);}
+				}
 			}
 		}
 	}

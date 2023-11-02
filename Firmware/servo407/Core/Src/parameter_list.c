@@ -264,7 +264,7 @@ HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 				if(inverter.state==ready_to_switch_on || inverter.state==switched_on);
 			}
 			if(bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0)&& (inverter.state==switched_on||inverter.state==quickstop_active)){ //transition 4
-				inverter_enable();inverter.state=operation_enabled;
+				inverter_enable();
 			}
 			if(!bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0) && inverter.state == operation_enabled){
 				inverter_disable();inverter.state=switched_on;
