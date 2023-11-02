@@ -55,6 +55,7 @@ void draw(){
 	case switch_on_disabled:
 		sprintf(statusString,"OFF %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);break;
 	case faulted:
+
 		//@TODO: implement error number decoding to show on display
 		{
 		char errorname [14];
@@ -67,6 +68,7 @@ void draw(){
 	default:
 		sprintf(statusString,"ERR %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);
 		break;
+
 	}
 	ssd1306_SetCursor(2	, 0);
 	ssd1306_WriteString(statusString, Font_6x8, 1);

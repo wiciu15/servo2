@@ -1296,6 +1296,7 @@ void LEDTimerCallback(void *argument)
 	/* USER CODE BEGIN LEDTimerCallback */
 	if(HAL_TIM_Base_GetState(&htim5)==HAL_TIM_STATE_BUSY){
 		switch(inverter.state){
+
 		case operation_enabled:  //status on error off
 			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,1);
 			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
@@ -1304,11 +1305,11 @@ void LEDTimerCallback(void *argument)
 			HAL_GPIO_TogglePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin);
 			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 0);
 			break;
-		case switch_on_disabled: //status off error blink
+		case inhibit: //status off error blink
 			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
 			HAL_GPIO_TogglePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin);
 			break;
-		case faulted: //status off error on
+		case trip: //status off error on
 			HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin,0);
 			HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 1);
 			break;

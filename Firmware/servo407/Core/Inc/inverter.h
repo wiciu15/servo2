@@ -38,6 +38,7 @@
 #include "parameter_list.h"
 
 //list of possible inverter errors that need to inhibit output and trip the inverter
+
 typedef enum {no_error=0x0000,
 	undervoltage, //trip if supply was too low when running
 	overvoltage,
@@ -56,6 +57,7 @@ typedef enum {no_error=0x0000,
 	inverter_error_count
 }inverter_error_t;
 
+
 typedef struct _inverter_error_object_t{
 	uint8_t error_number;
 	uint16_t error_number_cia402;
@@ -71,6 +73,7 @@ typedef struct _inverter_error_history_t{
 	inverter_error_history_buffer_t error_buffer[9];
 }inverter_error_history_t;
 typedef enum {not_ready_to_switch_on,switch_on_disabled,ready_to_switch_on,switched_on,operation_enabled,quickstop_active,fault_reaction,faulted}inverter_state_t;
+
 
 typedef struct _output_voltage_vector_t{
 	float U_Alpha;/*!< stator electric angle in radians, values over 6,28 (2*PI) are not allowed and will result in error trip */
@@ -173,8 +176,9 @@ void inverter_setup(void);
 void set_ctrl_loop_frequency(uint16_t frequency);
 void inverter_enable(void);
 void inverter_disable(void);
-void inverter_error_trip(uint16_t error_number);
+void inverter_error_trip(uint8_t error_number);
 HAL_StatusTypeDef inverter_error_reset(void);
+
 uint8_t isInverter_running(void);
 void update_constant_values(void);
 HAL_StatusTypeDef HOT_ADC_read(void);
