@@ -24,7 +24,7 @@ uint16_t modbus_protocol_read(uint32_t la){
 	parameter_t * par=NULL;
 	//search for chosen parameter in internal parameter list
 	for(uint16_t i=0;i<parameter_list_size;i++){
-		if(parameter_list[i].ModbusAddress==local_address){par=&parameter_list[i];break;}	
+		if(parameter_list[i].ModbusAddress==local_address){par=&parameter_list[i];break;}
 	}
 	if(par==NULL){
 		//@TODO: address does not exist in parameter list response

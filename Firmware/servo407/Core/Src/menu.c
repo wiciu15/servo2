@@ -220,14 +220,14 @@ void menu_jog_prev(){
 }
 
 void menu_jog_enter(){
-	if(inverter.state==stop){inverter_enable();}
-	else if(inverter.state==run){inverter_disable();}
+	if(inverter.state==switch_on_disabled){inverter_enable();inverter.state=operation_enabled;}
+	else if(inverter.state==switched_on||inverter.state==operation_enabled){inverter_disable();}
 }
 
 
 void menu_jog_refresh(){
-	if(inverter.control_mode==foc){
-		if(inverter.state==run && button_state.pressed_time[enter_key]<20){inverter_disable();}
+	if(inverter.control_mode>=1){
+		if(isInverter_running() && button_state.pressed_time[enter_key]<20){inverter_disable();}
 		key_next_func = menu_jog_next;
 		key_prev_func = menu_jog_prev;
 		key_ent_func = menu_jog_enter;
@@ -253,7 +253,7 @@ void menu_jog_callback(){
 }
 
 //this function is used to make corrections to values, account for type different than float or values depending on inverter actual state
-float monitor_get_value(void* ptr){
+/*float monitor_get_value(void* ptr){
 	float returnValue;
 	if(ptr==&inverter.speed_setpoint){
 		if(inverter.control_mode!=foc)returnValue=(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq));
@@ -265,7 +265,7 @@ float monitor_get_value(void* ptr){
 	else returnValue = *(float*)ptr;
 
 	return returnValue;
-}
+}*/
 void menu_monitor_back(){
 	key_next_func = menu_next;
 	key_prev_func = menu_prev;
