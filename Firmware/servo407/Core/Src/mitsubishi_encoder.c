@@ -63,7 +63,7 @@ void mitsubishi_motor_identification(void){
 			else {mitsubishi_encoder_data.encoder_command=0x1A;}
 			//allow hotplug of the encoder
 			mitsubishi_encoder_data.encoder_state=encoder_ok;
-			if(inverter.error==encoder_error_no_communication){
+			if(inverter.error==encoder_error_communication){
 				inverter.error=no_error;
 			}
 		}else{

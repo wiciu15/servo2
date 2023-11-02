@@ -21,21 +21,28 @@
 #define _SQRT3 1.73205f
 #define _SQRT2 1.414213f
 
+#define bitset(byte,nbit)   ((byte) |=  (1UL<<(nbit)))
+#define bitclear(byte,nbit) ((byte) &= ~(1UL<<(nbit)))
+#define bitflip(byte,nbit)  ((byte) ^=  (1UL<<(nbit)))
+#define bitcheck(byte,nbit) ((byte) &   (1<<(nbit)))
+
+
 #include "pid.h"
-#include "parameter_set.h"
 #include "eeprom.h"
 #include "mitsubishi_encoder.h"
 #include "tamagawa_encoder.h"
 #include "panasonic_encoder.h"
 #include "abz_encoder.h"
 #include "delta_encoder.h"
+#include "parameter_set.h"
+#include "parameter_list.h"
 
 //list of possible inverter errors that need to inhibit output and trip the inverter
-typedef enum {no_error,
-	undervoltage_condition,//condition that clears ittself after voltage comes back ok
+
+typedef enum {no_error=0x0000,
 	undervoltage, //trip if supply was too low when running
 	overvoltage,
-	shortcircuit,
+	shortcircuit, //hardware overcurrent detection fault pin on igbt
 	inverter_overcurrent,
 	inverter_overtemperature,
 	motor_overcurrent,
@@ -46,10 +53,28 @@ typedef enum {no_error,
 	internal_software,
 	external_comm,
 	softstart_failure,
-	eeprom_error
+	eeprom_error,
+	inverter_error_count
 }inverter_error_t;
-typedef enum {stop,run,inhibit,trip}inverter_state_t;
-typedef enum {manual,u_f,open_loop_current,foc}control_mode_t;
+
+
+typedef struct _inverter_error_object_t{
+	uint8_t error_number;
+	uint16_t error_number_cia402;
+	uint8_t error_name[14];
+	uint8_t error_desc[60];
+}inverter_error_object_t;
+typedef struct _inverter_error_history_buffer_t{
+	uint16_t error_num;
+	uint32_t error_time;
+}inverter_error_history_buffer_t;
+typedef struct _inverter_error_history_t{
+	uint8_t latest_record_index;
+	inverter_error_history_buffer_t error_buffer[9];
+}inverter_error_history_t;
+typedef enum {not_ready_to_switch_on,switch_on_disabled,ready_to_switch_on,switched_on,operation_enabled,quickstop_active,fault_reaction,faulted}inverter_state_t;
+
+
 typedef struct _output_voltage_vector_t{
 	float U_Alpha;/*!< stator electric angle in radians, values over 6,28 (2*PI) are not allowed and will result in error trip */
 	float U_Beta;/*!< stator voltage vector lenght in volts */
@@ -68,11 +93,22 @@ typedef struct _RMS_current_t{
 	float I_W_square_sum;
 }RMS_current_t;
 
+typedef struct _ramp_generator_t{
+	enum {linear_ramp,stype_ramp}ramp_type;
+	float previous_output;
+	float incr_per_second_positive;
+	float incr_per_second_negative;
+	float sampling_time;
+	float positive_limit;
+	float negative_limit;
+}ramp_generator_t;
+
 typedef struct _inverter_t {
+uint8_t constant_values_update_needed;
 float control_loop_freq;
-uint32_t error;
+inverter_error_t error;
 inverter_state_t state;
-control_mode_t control_mode;
+operation_mode_t control_mode;
 uint16_t duty_cycle_limit;
 output_voltage_vector_t output_voltage_vector;
 float stator_electric_angle;
@@ -87,6 +123,7 @@ float output_power_active;
 float output_power_apparent;
 float stator_field_speed;
 float DCbus_voltage;
+uint8_t softstart_finished;
 uint16_t RAW_DCBUS;
 float IGBT_temp;
 uint16_t zerocurrent_ADC_samples_U; //number of ADC samples when output is off and current is 0
@@ -122,6 +159,8 @@ float U_W;
 float torque_current_setpoint;
 float field_current_setpoint;
 float speed_setpoint;
+float speed_setpoint_after_rg;
+ramp_generator_t speed_ramp_generator_data;
 PID_t id_current_controller_data;
 PID_t iq_current_controller_data;
 PID_t speed_controller_data;
@@ -129,13 +168,19 @@ PID_t speed_controller_data;
 
 extern inverter_t inverter;
 extern parameter_set_t parameter_set;
+const extern inverter_error_object_t inverter_error_object[];
+extern inverter_error_history_t inverter_error_history;
 
+uint16_t get_CIA402_error_number(inverter_error_t error_num);
 void inverter_setup(void);
 void set_ctrl_loop_frequency(uint16_t frequency);
 void inverter_enable(void);
 void inverter_disable(void);
 void inverter_error_trip(uint8_t error_number);
 HAL_StatusTypeDef inverter_error_reset(void);
+
+uint8_t isInverter_running(void);
+void update_constant_values(void);
 HAL_StatusTypeDef HOT_ADC_read(void);
 void HOT_ADC_RX_Cplt(void);
 void HOT_ADC_calculate_avg(void);
@@ -144,6 +189,7 @@ void park_transform(float I_alpha,float I_beta,float angle,float * I_d,float * I
 void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float * U_beta);
 float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_value);
 float LowPassFilterA(float Tf,float Ts,float actual_measurement, float * last_filtered_value);
+float ramp_generator(ramp_generator_t * ramp_generator_data,float input);
 
 void output_sine_pwm(output_voltage_vector_t voltage_vector);
 void output_svpwm(output_voltage_vector_t voltage_vector);
