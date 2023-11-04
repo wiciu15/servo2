@@ -44,12 +44,13 @@ void tamagawa_encoder_process_position(void){
 	}
 	if(xor_cheksum!=tamagawa_encoder_data.motor_data_response_packet[10]){
 		tamagawa_encoder_data.checksum_error_count++;
-		if(tamagawa_encoder_data.checksum_error_count>100){inverter_error_trip(encoder_error_communication);}
+		if(tamagawa_encoder_data.checksum_error_count>10){inverter_error_trip(encoder_error_communication);}
 	}
 	else{ //calculate position and speed from received earlier data
 		//tamagawa_encoder_data.encoder_state=encoder_ok;
 		tamagawa_encoder_data.last_encoder_position=tamagawa_encoder_data.encoder_position;
 		tamagawa_encoder_data.encoder_position=tamagawa_encoder_data.motor_data_response_packet[2] | tamagawa_encoder_data.motor_data_response_packet[3]<<8 | tamagawa_encoder_data.motor_data_response_packet[4]<<16;
+		if(parameter_set.encoder_polarity){tamagawa_encoder_data.encoder_position=131072-tamagawa_encoder_data.encoder_position;}
 		tamagawa_encoder_data.speed = tamagawa_encoder_data.last_encoder_position-tamagawa_encoder_data.encoder_position;
 		inverter.encoder_raw_position=tamagawa_encoder_data.encoder_position>>1;
 		inverter.rotor_electric_angle=(((fmodf(tamagawa_encoder_data.encoder_position, 131072.0f/(float)parameter_set.motor_pole_pairs))/(131072.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
