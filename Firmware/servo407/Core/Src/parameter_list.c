@@ -7,6 +7,7 @@
 
 #include "parameter_list.h"
 #include <string.h>
+#include <math.h>
 
 HAL_StatusTypeDef limiter(parameter_t * par, void * pValue, void * pReturnValue);
 HAL_StatusTypeDef prepare_received_data(parameter_t * par, uint32_t * pReceivedData, void * pReturnValue);
@@ -17,10 +18,10 @@ const parameter_t parameter_list[]={
 		{.number=3,.ModbusAddress=3,.CANAddress=1111,.name={"Magnetizing current"},.shortName={"I mag"},.description={"Magnetizing RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
 		{.number=4,.ModbusAddress=4,.CANAddress=1111,.name={"Torque current"},.shortName={"I trq"},.description={"Torque-producing RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
 		{.number=5,.ModbusAddress=5,.CANAddress=1111,.name={"Motor torque"},.shortName={"Mot trq"},.description={"Actaul motor torque in %"},.WriteAllowed=0,.precision=1,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-1000.0f,.maxValue=1000.0f,.defaultValue=0.0f},
-		{.number=6,.ModbusAddress=6,.CANAddress=1111,.name={"Actual position L"},.shortName={"Act posL"},.description={"Actual rotor position low word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
-		{.number=7,.ModbusAddress=7,.CANAddress=1111,.name={"Actual position H"},.shortName={"Act posH"},.description={"Actual axis position high word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32767.0f,.maxValue=32767.0f,.defaultValue=0.0f},
-		{.number=8,.ModbusAddress=8,.CANAddress=1111,.name={"Target position L"},.shortName={"Tht posL"},.description={"Actual rotor position high word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
-		{.number=9,.ModbusAddress=9,.CANAddress=1111,.name={"Target position H"},.shortName={"Tgt posH"},.description={"Target axis position high word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32767.0f,.maxValue=32767.0f,.defaultValue=0.0f},
+		{.number=6,.ModbusAddress=6,.CANAddress=1111,.name={"Actual position L"},.shortName={"Act posL"},.description={"Actual rotor position low word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32768.0f,.maxValue=32767.0f,.defaultValue=0.0f},
+		{.number=7,.ModbusAddress=7,.CANAddress=1111,.name={"Actual position H"},.shortName={"Act posH"},.description={"Actual axis position high word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32768.0f,.maxValue=32767.0f,.defaultValue=0.0f},
+		{.number=8,.ModbusAddress=8,.CANAddress=1111,.name={"Target position L"},.shortName={"Tht posL"},.description={"Target axis position high word"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32768.0f,.maxValue=32767.0f,.defaultValue=0.0f},
+		{.number=9,.ModbusAddress=9,.CANAddress=1111,.name={"Target position H"},.shortName={"Tgt posH"},.description={"Target axis position high word"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32768.0f,.maxValue=32767.0f,.defaultValue=0.0f},
 		{.number=10,.ModbusAddress=10,.CANAddress=1111,.name={"Motor voltage"},.shortName={"U mot"},.description={"Actual motor RMS voltage"},.WriteAllowed=0,.precision=1,.unit="V",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=11,.ModbusAddress=11,.CANAddress=1111,.name={"DC bus voltage"},.shortName={"DC bus"},.description={"Actual voltage in intermediate circuit"},.WriteAllowed=0,.precision=1,.unit="V",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=12,.ModbusAddress=12,.CANAddress=1111,.name={"Motor thermal load"},.shortName={"Mot I2t"},.description={"Motor thermal calculated from output current"},.WriteAllowed=0,.precision=1,.unit="%",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
@@ -55,6 +56,9 @@ const parameter_t parameter_list[]={
 		{.number=100,.ModbusAddress=100,.CANAddress=1111,.name={"Motor control mode"},.shortName={"Ctl mode"},.description={"Motion control mode"},.WriteAllowed=2,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-5.0f,.maxValue=7.0f,.defaultValue=1.0f},
 		{.number=101,.ModbusAddress=101,.CANAddress=1111,.name={"Save EEPROM"},.shortName={"Save par"},.description={"Save parameters in non-volatile memory"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=1.0f,.defaultValue=0.0f},
 
+		{.number=120,.ModbusAddress=120,.CANAddress=1111,.name={"Factor Numerator"},.shortName={"Fct num"},.description={"Encoder scaling factor - numerator"},.WriteAllowed=2,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=1.0f,.maxValue=65535.0f,.defaultValue=0.0f},
+		{.number=121,.ModbusAddress=121,.CANAddress=1111,.name={"Factor Denominator"},.shortName={"Fct den"},.description={"Encoder scaling factor - denominator"},.WriteAllowed=2,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=1.0f,.maxValue=65535.0f,.defaultValue=0.0f},
+
 
 		{.number=200,.ModbusAddress=200,.CANAddress=1111,.name={"Feedback type"},.shortName={"Fbk typ"},.description={"Rotor position feedback type"},.WriteAllowed=2,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=5.0f,.defaultValue=1.0f},
 		{.number=201,.ModbusAddress=201,.CANAddress=1111,.name={"Feedback offset"},.shortName={"Fbk ofs"},.description={"Difference of feedback el angle and rotor"},.WriteAllowed=1,.precision=2,.unit="deg",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-180.0f,.maxValue=180.0f,.defaultValue=0.0f},
@@ -79,8 +83,8 @@ const parameter_t parameter_list[]={
 		{.number=302,.ModbusAddress=302,.CANAddress=1111,.name={"Speed limit positive"},.shortName={"Spd lim+"},.description={"Speed limit in positive direction"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65000.0f,.defaultValue=4000.0f},
 		{.number=303,.ModbusAddress=303,.CANAddress=1111,.name={"Speed limit negative"},.shortName={"Spd lim-"},.description={"Speed limit in negative direction"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65000.0f,.defaultValue=4000.0f},
 
-		{.number=310,.ModbusAddress=310,.CANAddress=1111,.name={"Position loop P gain"},.shortName={"Pos p"},.description={"Proportional gain of positioning loop"},.WriteAllowed=1,.precision=2,.unit="",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=0.0f,.maxValue=650.0f,.defaultValue=3.0f},
-		{.number=311,.ModbusAddress=311,.CANAddress=1111,.name={"Position loop I time"},.shortName={"Pos i"},.description={"Integration time of positioning loop"},.WriteAllowed=1,.precision=0,.unit="ms",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=650.0f,.defaultValue=40.0f},
+		{.number=310,.ModbusAddress=310,.CANAddress=1111,.name={"Position loop P gain"},.shortName={"Pos p"},.description={"Proportional gain of positioning loop"},.WriteAllowed=1,.precision=3,.unit="",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.001f,.minValue=0.0f,.maxValue=6500.0f,.defaultValue=2.0f},
+		{.number=311,.ModbusAddress=311,.CANAddress=1111,.name={"Position loop I time"},.shortName={"Pos i"},.description={"Integration time of positioning loop"},.WriteAllowed=1,.precision=1,.unit="ms",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=0.0f,.maxValue=6500.0f,.defaultValue=0.0f},
 
 		{.number=320,.ModbusAddress=320,.CANAddress=1111,.name={"Speed loop P gain"},.shortName={"Speed p"},.description={"Proportional gain of speed control loop"},.WriteAllowed=1,.precision=3,.unit="",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.001f,.minValue=0.0f,.maxValue=65.0f,.defaultValue=0.029f},
 		{.number=321,.ModbusAddress=321,.CANAddress=1111,.name={"Speed loop I time"},.shortName={"Speed i"},.description={"Integration time of speed control loop"},.WriteAllowed=1,.precision=1,.unit="ms",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=0.0f,.maxValue=650.0f,.defaultValue=0.1f},
@@ -151,6 +155,10 @@ HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue
 	case 3:{float value=(inverter.I_d_filtered/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
 	case 4:{float value=(inverter.I_q_filtered/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
 	case 5:{float value=(inverter.I_q_filtered/parameter_set.motor_nominal_current)*100.0f;memcpy(ptrToReturnValue,&value,4);break;}
+	case 6:{int16_t value = (int16_t)((int32_t)axis.actual_position & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;} //split int32 to int16
+	case 7:{int16_t value = (int16_t)(((int32_t)axis.actual_position>>16) & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
+	case 8:{int16_t value = (int16_t)(axis.target_position & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
+	case 9:{int16_t value = (int16_t)((axis.target_position>>16) & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
 	case 10:{float value=(inverter.output_voltage/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
 	case 11:{float value=(inverter.DCbus_voltage);memcpy(ptrToReturnValue,&value,4);break;}
 
@@ -193,6 +201,9 @@ HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue
 	case 100:{int16_t value=(int16_t)inverter.control_mode;memcpy(ptrToReturnValue,&value,2);break;}
 	case 101:{uint16_t value=0;memcpy(ptrToReturnValue,&value,2);break;}
 
+	case 120:{uint16_t value=parameter_set.position_factor_numerator;memcpy(ptrToReturnValue,&value,2);break;}
+	case 121:{uint16_t value=parameter_set.position_factor_denominator;memcpy(ptrToReturnValue,&value,2);break;}
+
 	case 200:{uint16_t value=(uint16_t)parameter_set.motor_feedback_type;memcpy(ptrToReturnValue,&value,2);break;}
 	case 201:{float value=parameter_set.encoder_electric_angle_correction*(180.0f/_PI);memcpy(ptrToReturnValue,&value,4);break;}
 	case 202:{uint16_t value=parameter_set.encoder_resolution/2;memcpy(ptrToReturnValue,&value,2);break;}
@@ -215,6 +226,9 @@ HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue
 	case 301:{float value=(parameter_set.deceleration_ramp_s);memcpy(ptrToReturnValue,&value,4);break;}
 	case 302:{float value=(parameter_set.speed_limit_positive);memcpy(ptrToReturnValue,&value,4);break;}
 	case 303:{float value=(parameter_set.speed_limit_negative);memcpy(ptrToReturnValue,&value,4);break;}
+
+	case 310:{float value=(parameter_set.position_controller_proportional_gain);memcpy(ptrToReturnValue,&value,4);break;}
+	case 311:{float value=(parameter_set.position_controller_integral_gain);memcpy(ptrToReturnValue,&value,4);break;}
 
 	case 320:{float value=(parameter_set.speed_controller_proportional_gain);memcpy(ptrToReturnValue,&value,4);break;}
 	case 321:{float value=(parameter_set.speed_controller_integral_gain);memcpy(ptrToReturnValue,&value,4);break;}
@@ -243,6 +257,20 @@ HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 		if(inverter.state==operation_enabled){status = HAL_BUSY;break;}	}//if write allowed on stop only break out from switch, otherwise fall through to write allowed
 	case 1:{ //write allowed
 		switch(par->number){
+		case 8:{
+			int16_t value=0;
+			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
+			axis.target_position=axis.target_position & 0xFFFF0000; //clear lower 16bit
+			axis.target_position=axis.target_position | ((int32_t)value & 0x0000FFFF);
+			break;
+		}
+		case 9:{
+			int16_t value=0;
+			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
+			axis.target_position=axis.target_position & 0x0000FFFF; //clear lower 16bit
+			axis.target_position=axis.target_position | ((((int32_t)value)<<16) & 0xFFFF0000);
+			break;
+		}
 		case 31:{ //control register
 			uint16_t value = (uint16_t)*pValue;
 			if(!bitcheck(value,1)){//enable voltage bit =0 - disable inverter, transition 7,9,10,12
@@ -329,6 +357,18 @@ HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 					inverter_error_trip(eeprom_error);
 				}
 			}
+			break;}
+		case 120: //position factor numerator
+		{
+			uint16_t value = 0.0f;
+			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
+			parameter_set.position_factor_numerator=(uint16_t)value;
+			break;}
+		case 121: //position factor denominator
+		{
+			uint16_t value = 0.0f;
+			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
+			parameter_set.position_factor_denominator=(uint16_t)value;
 			break;}
 
 		case 200: //feedback type
@@ -450,6 +490,18 @@ HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 			float value = 0.0f;
 			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
 			parameter_set.speed_limit_negative=value;
+			break;}
+		case 310: //position p
+		{
+			float value = 0.0f;
+			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
+			parameter_set.position_controller_proportional_gain=value;
+			break;}
+		case 311: //position i
+		{
+			float value = 0.0f;
+			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
+			parameter_set.position_controller_integral_gain=value;
 			break;}
 		case 320: //speed p
 		{

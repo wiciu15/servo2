@@ -65,6 +65,11 @@ typedef struct _parameter_set_t{
 	float speed_limit_negative;
 	float acceleration_ramp_s; //unit: s/1000RPM
 	float deceleration_ramp_s;
+
+	uint16_t position_factor_numerator;
+	uint16_t position_factor_denominator;
+	float position_controller_proportional_gain;
+	float position_controller_integral_gain;
 }parameter_set_t;
 
 

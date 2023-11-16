@@ -36,6 +36,7 @@
 #include "delta_encoder.h"
 #include "parameter_set.h"
 #include "parameter_list.h"
+#include "axis.h"
 
 //list of possible inverter errors that need to inhibit output and trip the inverter
 typedef enum {no_error=0x0000,

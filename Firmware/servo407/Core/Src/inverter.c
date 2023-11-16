@@ -58,8 +58,12 @@ parameter_set_t parameter_set={
 		.speed_limit_positive=3000.0f,
 		.speed_limit_negative=3000.0f,
 		.acceleration_ramp_s=0.1f, //unit: s/1000RPM
-		.deceleration_ramp_s=0.1f
+		.deceleration_ramp_s=0.1f,
 
+		.position_factor_numerator=1,
+		.position_factor_denominator=1,
+		.position_controller_proportional_gain=0.01f,
+		.position_controller_integral_gain=0.0f
 };
 
 inverter_t inverter={
@@ -226,6 +230,7 @@ void set_ctrl_loop_frequency(uint16_t frequency){
 	inverter.iq_current_controller_data.sampling_time=1.0f/inverter.control_loop_freq;
 	inverter.speed_controller_data.sampling_time=(1.0f/inverter.control_loop_freq)*10.0f;
 	inverter.speed_ramp_generator_data.sampling_time=1.0f/(frequency/10.0f);
+	axis.position_controller_data.sampling_time=(1.0f/inverter.control_loop_freq)*10.0f;
 }
 /**
   * @brief  Enable PWM output of the inverter
@@ -279,6 +284,10 @@ void inverter_disable(){
 	inverter.speed_controller_data.last_error=0.0f;
 	inverter.speed_controller_data.last_integral=0.0f;
 	inverter.speed_controller_data.last_output=0.0f;
+
+	axis.position_controller_data.last_error=0.0f;
+	axis.position_controller_data.last_integral=0.0f;
+	axis.position_controller_data.last_output=0.0f;
 
 	inverter.speed_setpoint_after_rg=0.0f;
 	//inverter.speed_setpoint=0.0f;
@@ -336,6 +345,8 @@ void update_constant_values(void){
 	inverter.speed_controller_data.integral_gain=parameter_set.speed_controller_integral_gain;
 	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current;
 	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current;
+
+	axis_update_controller_data();
 
 	inverter.speed_ramp_generator_data.positive_limit=parameter_set.speed_limit_positive;
 	inverter.speed_ramp_generator_data.negative_limit=parameter_set.speed_limit_negative;
@@ -635,8 +646,17 @@ void RMS_current_calculation_loop(void){
   * @retval null
   */
 void motor_control_loop_slow(void){
+	//position controller
+	if(inverter.control_mode==foc_position_profile){
+		if(inverter.state!=operation_enabled){
+			axis.target_position=axis.actual_position;
+			inverter.speed_setpoint = 0.0f;
+		}else{
+			inverter.speed_setpoint = axis_positioning_loop();
+		}
+	}
 	//speed controller
-	if((inverter.control_mode==foc_speed || inverter.control_mode==sensorless_speed) && inverter.state==operation_enabled){
+	if((inverter.control_mode==foc_speed || inverter.control_mode==foc_position_profile || inverter.control_mode==sensorless_speed) && inverter.state==operation_enabled){
 		inverter.speed_setpoint_after_rg=ramp_generator(&inverter.speed_ramp_generator_data, inverter.speed_setpoint);
 		inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint_after_rg-inverter.filtered_rotor_speed);
 	}
@@ -721,10 +741,13 @@ void motor_control_loop(void){
 	//inverter.output_power_active=inverter.output_voltage*inverter.I_q_filtered;
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 
+	int32_t last_position = inverter.encoder_raw_position;
 	//calculate/get rotor electric angle from encoder
 	if(parameter_set.motor_feedback_type==abz_encoder){abz_encoder_calculate_abs_position();}
 	if(parameter_set.motor_feedback_type==mitsubishi_encoder){mitsubishi_encoder_process_data();}
 	if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_process_position();}
+
+	update_axis_position(last_position - inverter.encoder_raw_position);
 
 	//calculate torque angle
 	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}
