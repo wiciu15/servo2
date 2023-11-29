@@ -67,7 +67,7 @@ parameter_set_t parameter_set={
 };
 
 inverter_t inverter={
-		.constant_values_update_needed=1,
+		.constant_values_update_needed=1, //force recalculation on first enable
 		.control_loop_freq=8000,
 		.error=no_error,
 		.state=not_ready_to_switch_on,
@@ -343,8 +343,8 @@ void update_constant_values(void){
 
 	inverter.speed_controller_data.proportional_gain=parameter_set.speed_controller_proportional_gain;
 	inverter.speed_controller_data.integral_gain=parameter_set.speed_controller_integral_gain;
-	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current;
-	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current;
+	inverter.speed_controller_data.antiwindup_limit=parameter_set.motor_max_current-0.2f;
+	inverter.speed_controller_data.output_limit=parameter_set.motor_max_current-0.2f;
 
 	axis_update_controller_data();
 
@@ -487,9 +487,9 @@ float ramp_generator(ramp_generator_t * ramp_generator_data,float input){
  * @brief Limits
  */
 float constrainf(float number, float min, float max){
-	if(number<min){return min;}
+	if(number<=min){return min;}
 	else if(number>min && number<max){return number;}
-	else if(number>max){return max;}
+	else if(number>=max){return max;}
 	else{return number;}
 }
 
@@ -558,64 +558,70 @@ void output_svpwm(output_voltage_vector_t voltage_vector){
 	float T0 = inverter.duty_cycle_limit - T1 - T2; // modulation_centered around driver->voltage_limit/2
 	// calculate the duty cycles of each PWM driver
 
+	float U_U=0.0f;
+	float U_V=0.0f;
+	float U_W=0.0f;
 	switch(sector){
 	case 1:
-		inverter.U_U = T1 + T2 + T0/2;
-		inverter.U_V = T2 + T0/2;
-		inverter.U_W = T0/2;
+		U_U = T1 + T2 + T0/2;
+		U_V = T2 + T0/2;
+		U_W = T0/2;
 		break;
 	case 2:
-		inverter.U_U = T1 +  T0/2;
-		inverter.U_V = T1 + T2 + T0/2;
-		inverter.U_W = T0/2;
+		U_U = T1 +  T0/2;
+		U_V = T1 + T2 + T0/2;
+		U_W = T0/2;
 		break;
 	case 3:
-		inverter.U_U = T0/2;
-		inverter.U_V = T1 + T2 + T0/2;
-		inverter.U_W = T2 + T0/2;
+		U_U = T0/2;
+		U_V = T1 + T2 + T0/2;
+		U_W = T2 + T0/2;
 		break;
 	case 4:
-		inverter.U_U = T0/2;
-		inverter.U_V = T1+ T0/2;
-		inverter.U_W = T1 + T2 + T0/2;
+		U_U = T0/2;
+		U_V = T1+ T0/2;
+		U_W = T1 + T2 + T0/2;
 		break;
 	case 5:
-		inverter.U_U = T2 + T0/2;
-		inverter.U_V = T0/2;
-		inverter.U_W = T1 + T2 + T0/2;
+		U_U = T2 + T0/2;
+		U_V = T0/2;
+		U_W = T1 + T2 + T0/2;
 		break;
 	case 6:
-		inverter.U_U = T1 + T2 + T0/2;
-		inverter.U_V = T0/2;
-		inverter.U_W = T1 + T0/2;
+		U_U = T1 + T2 + T0/2;
+		U_V = T0/2;
+		U_W = T1 + T0/2;
 		break;
 	default:
 		// possible error state
-		inverter.U_U = 0;
-		inverter.U_V = 0;
-		inverter.U_W = 0;
+		U_U = 0;
+		U_V = 0;
+		U_W = 0;
 	}
 	//dead time and forward drop compensation
-	float offset=(U_sat/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f);
-	if(inverter.I_U>-0.05f){inverter.U_U+=offset/**constrainf(inverter.I_U/0.03f,0.0f,1.0f)*/;}
-	if(inverter.I_U<0.05f){inverter.U_U-=offset/**constrainf(-inverter.I_U/0.03f,0.0f,1.0f)*/;}
-	if(inverter.I_V>-0.05f){inverter.U_V+=offset/**constrainf(inverter.I_V/0.03f,0.0f,1.0f)*/;}
-	if(inverter.I_V<0.05f){inverter.U_V-=offset/**constrainf(-inverter.I_V/0.03f,0.0f,1.0f)*/;}
-	if(inverter.I_W>-0.05f){inverter.U_W+=offset/**constrainf(inverter.I_W/0.03f,0.0f,1.0f)*/;}
-	if(inverter.I_W<0.05f){inverter.U_W-=offset/**constrainf(-inverter.I_W/0.03f,0.0f,1.0f)*/;}
+	float offset=(DT_COMP_VOLT/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f);
+	if(inverter.I_U>0.0f){U_U+=offset*constrainf(inverter.I_U/DT_COMP_CURR,0.0f,1.0f);}
+	if(inverter.I_U<0.0f){U_U-=offset*constrainf(-inverter.I_U/DT_COMP_CURR,0.0f,1.0f);}
+	if(inverter.I_V>0.0f){U_V+=offset*constrainf(inverter.I_V/DT_COMP_CURR,0.0f,1.0f);}
+	if(inverter.I_V<0.0f){U_V-=offset*constrainf(-inverter.I_V/DT_COMP_CURR,0.0f,1.0f);}
+	if(inverter.I_W>0.0f){U_W+=offset*constrainf(inverter.I_W/DT_COMP_CURR,0.0f,1.0f);}
+	if(inverter.I_W<0.0f){U_W-=offset*constrainf(-inverter.I_W/DT_COMP_CURR,0.0f,1.0f);}
 
-	if(inverter.U_U>inverter.duty_cycle_limit){inverter.U_U=inverter.duty_cycle_limit;}
-	if(inverter.U_V>inverter.duty_cycle_limit){inverter.U_V=inverter.duty_cycle_limit;}
-	if(inverter.U_W>inverter.duty_cycle_limit){inverter.U_W=inverter.duty_cycle_limit;}
-	if(inverter.U_U<0){inverter.U_U=0;}
-	if(inverter.U_V<0){inverter.U_V=0;}
-	if(inverter.U_W<0){inverter.U_W=0;}
+	if(U_U>inverter.duty_cycle_limit){U_U=inverter.duty_cycle_limit;}
+	if(U_V>inverter.duty_cycle_limit){U_V=inverter.duty_cycle_limit;}
+	if(U_W>inverter.duty_cycle_limit){U_W=inverter.duty_cycle_limit;}
+	if(U_U<0){U_U=0;}
+	if(U_V<0){U_V=0;}
+	if(U_W<0){U_W=0;}
 
+	TIM1->CCR1=(uint16_t)U_U;
+	TIM1->CCR2=(uint16_t)U_V;
+	TIM1->CCR3=(uint16_t)U_W;
 
-
-	TIM1->CCR1=(uint16_t)inverter.U_U;
-	TIM1->CCR2=(uint16_t)inverter.U_V;
-	TIM1->CCR3=(uint16_t)inverter.U_W;
+	float volts_per_one_timer_tick=(inverter.DCbus_voltage/inverter.duty_cycle_limit);
+	inverter.U_U=(U_U-inverter.duty_cycle_limit/2.0f)*volts_per_one_timer_tick;
+	inverter.U_V=(U_V-inverter.duty_cycle_limit/2.0f)*volts_per_one_timer_tick;
+	inverter.U_W=(U_W-inverter.duty_cycle_limit/2.0f)*volts_per_one_timer_tick;
 }
 
 

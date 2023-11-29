@@ -44,6 +44,7 @@ const parameter_t parameter_list[]={
 		{.number=34,.ModbusAddress=34,.CANAddress=1111,.name={"Field target"},.shortName={"Fld trq"},.description={"Target field"},.WriteAllowed=1,.precision=2,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
 		{.number=35,.ModbusAddress=35,.CANAddress=1111,.name={"Open loop freq"},.shortName={"OL freq"},.description={"Actual output frequency in uf/open loop mode"},.WriteAllowed=0,.precision=1,.unit="Hz",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=-650.0f,.maxValue=650.0f,.defaultValue=0.0f},
 		{.number=36,.ModbusAddress=36,.CANAddress=1111,.name={"Target open loop freq"},.shortName={"Freq tgt"},.description={"Output frequency target in uf/open loop mode"},.WriteAllowed=1,.precision=1,.unit="Hz",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=-650.0f,.maxValue=650.0f,.defaultValue=0.0f},
+		{.number=37,.ModbusAddress=37,.CANAddress=1111,.name={"Target open loop volt"},.shortName={"Volt tgt"},.description={"Output voltage target in manual"},.WriteAllowed=1,.precision=1,.unit="V",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=0.0f,.maxValue=480.0f,.defaultValue=0.0f},
 
 		{.number=40,.ModbusAddress=40,.CANAddress=1111,.name={"Encoder pulse"},.shortName={"Enc puls"},.description={"One turn absolute encoder pulse"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=41,.ModbusAddress=41,.CANAddress=1111,.name={"Stator Electric Angle"},.shortName={"Fld ang"},.description={"Actual stator field electric angle"},.WriteAllowed=1,.precision=1,.unit="deg",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=0.0f,.maxValue=359.9f,.defaultValue=0.0f},
@@ -188,7 +189,8 @@ HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue
 	case 33:{float value=(inverter.torque_current_setpoint/parameter_set.motor_nominal_current)*100.0f;memcpy(ptrToReturnValue,&value,4);break;}
 	case 34:{float value=(inverter.field_current_setpoint/parameter_set.motor_nominal_current)*100.0f;memcpy(ptrToReturnValue,&value,4);break;}
 	case 35:{float value=(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq));memcpy(ptrToReturnValue,&value,4);break;}
-	case 36:{float value=(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq));memcpy(ptrToReturnValue,&value,4);break;} //implement target open loop speed
+	case 36:{float value=(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq));memcpy(ptrToReturnValue,&value,4);break;} //@TODO:implement target open loop speed
+	case 37:{float value=(inverter.output_voltage/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
 
 	case 40:{uint16_t value=(inverter.encoder_raw_position);memcpy(ptrToReturnValue,&value,2);break;}
 	case 41:{float value=(inverter.stator_electric_angle*(180.0f/_PI));memcpy(ptrToReturnValue,&value,4);break;}
@@ -336,9 +338,16 @@ HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
 			if(inverter.control_mode==open_loop_current || inverter.control_mode==u_f || inverter.control_mode==manual){
 				inverter.stator_field_speed = (value*(_2_PI/inverter.control_loop_freq));
-			}
-
+			}break;
 		}
+		case 37: //stator volt target
+				{
+					float value = 0.0f;
+					if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
+					if(inverter.control_mode==manual){
+						inverter.output_voltage = (value*_SQRT2);
+					}break;
+				}
 		case 100: //control mode
 		{
 			int16_t value=0;
