@@ -653,20 +653,22 @@ void RMS_current_calculation_loop(void){
   */
 void motor_control_loop_slow(void){
 	//position controller
-	if(inverter.control_mode==foc_position_profile){
+	if(inverter.control_mode==foc_position_profile || inverter.control_mode==foc_position_interpolated ){
 		if(inverter.state!=operation_enabled){
 			axis.target_position=axis.actual_position;
+			axis.target_position_from_tg=axis.actual_position;
 			inverter.speed_setpoint = 0.0f;
 		}else{
 			inverter.speed_setpoint = axis_positioning_loop();
 		}
 	}
+
 	//speed controller
 	if((inverter.control_mode==foc_speed || inverter.control_mode==sensorless_speed) && inverter.state==operation_enabled){
 		inverter.speed_setpoint_after_rg=ramp_generator(&inverter.speed_ramp_generator_data, inverter.speed_setpoint);
 		inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint_after_rg-inverter.filtered_rotor_speed);
 	}
-	if((inverter.control_mode==foc_position_profile )&& inverter.state==operation_enabled){ //in positioning mode bypass speed ramp generator, acceleration should be created by position profile trajectory generator
+	if((inverter.control_mode==foc_position_profile || inverter.control_mode==foc_position_interpolated)&& inverter.state==operation_enabled){ //in positioning mode bypass speed ramp generator, acceleration should be created by position profile trajectory generator
 		inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint-inverter.filtered_rotor_speed);
 	}
 }
