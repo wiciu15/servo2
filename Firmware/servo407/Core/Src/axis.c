@@ -52,6 +52,7 @@ void update_axis_position(int32_t position_change_since_last_reading){
  * @retval speed demand in RPM
  */
 float axis_positioning_loop (void){
-	float speed_demand = PI_control(&axis.position_controller_data,(float)(axis.target_position-axis.actual_position));
+	axis.error_position = axis.target_position-axis.actual_position;
+	float speed_demand = PI_control(&axis.position_controller_data,(float)axis.error_position);
 	return speed_demand;
 }

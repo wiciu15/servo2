@@ -662,11 +662,13 @@ void motor_control_loop_slow(void){
 		}
 	}
 	//speed controller
-	if((inverter.control_mode==foc_speed || inverter.control_mode==foc_position_profile || inverter.control_mode==sensorless_speed) && inverter.state==operation_enabled){
+	if((inverter.control_mode==foc_speed || inverter.control_mode==sensorless_speed) && inverter.state==operation_enabled){
 		inverter.speed_setpoint_after_rg=ramp_generator(&inverter.speed_ramp_generator_data, inverter.speed_setpoint);
 		inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint_after_rg-inverter.filtered_rotor_speed);
 	}
-
+	if((inverter.control_mode==foc_position_profile )&& inverter.state==operation_enabled){ //in positioning mode bypass speed ramp generator, acceleration should be created by position profile trajectory generator
+		inverter.torque_current_setpoint = PI_control(&inverter.speed_controller_data, inverter.speed_setpoint-inverter.filtered_rotor_speed);
+	}
 }
 
 /**
@@ -766,7 +768,7 @@ void motor_control_loop(void){
 		float speed_calc_angle_delta=inverter.rotor_electric_angle-inverter.last_rotor_electric_angle;
 		inverter.rotor_speed=((speed_calc_angle_delta)/parameter_set.motor_pole_pairs)*9.549296f*(inverter.control_loop_freq/10.0f);
 		//speed(rpm) = ((x(deg)/polepairs)/360deg)/(0,002(s)/60s)
-		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(inverter.control_loop_freq/10);
+		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(inverter.control_loop_freq/10.0f);
 		if(inverter.rotor_speed>theoretical_encoder_speed/2.0f){inverter.rotor_speed-=theoretical_encoder_speed;}if(inverter.rotor_speed<(-theoretical_encoder_speed/2.0f)){inverter.rotor_speed+=theoretical_encoder_speed;}
 		inverter.last_rotor_electric_angle = inverter.rotor_electric_angle;
 		motor_control_loop_slow();
@@ -802,8 +804,10 @@ void motor_control_loop(void){
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 
 	//low pass filter of current vector values
-	inverter.I_d_filtered = LowPassFilter(0.00007f, inverter.I_d, &inverter.I_d_last);
-	inverter.I_q_filtered = LowPassFilter(0.00007f, inverter.I_q, &inverter.I_q_last);
+	//inverter.I_d_filtered = LowPassFilter(0.0001f, inverter.I_d, &inverter.I_d_last);
+	//inverter.I_q_filtered = LowPassFilter(0.0001f, inverter.I_q, &inverter.I_q_last);
+	inverter.I_d_filtered = inverter.I_d;
+	inverter.I_q_filtered = inverter.I_q;
 
 
 	//PI control of voltage vector in open loop

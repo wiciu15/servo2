@@ -1185,8 +1185,8 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 			avg_V_samples+=inverter.output_current_adc_buffer[i+1];
 		}
 		//calculate phase current
-		inverter.I_U=LowPassFilterA(0.0002f, 0.0000125f, -((float)avg_U_samples/5.0f-inverter.zerocurrent_ADC_samples_U)/ADC_SAMPLES_PER_AMP, &inverter.I_U);
-		inverter.I_V=LowPassFilterA(0.0002f, 0.0000125f,-((float)avg_V_samples/5.0f-inverter.zerocurrent_ADC_samples_V)/ADC_SAMPLES_PER_AMP,&inverter.I_V);
+		inverter.I_U=LowPassFilterA(0.0001f, 0.0000125f, -((float)avg_U_samples/5.0f-inverter.zerocurrent_ADC_samples_U)/ADC_SAMPLES_PER_AMP, &inverter.I_U);
+		inverter.I_V=LowPassFilterA(0.0001f, 0.0000125f,-((float)avg_V_samples/5.0f-inverter.zerocurrent_ADC_samples_V)/ADC_SAMPLES_PER_AMP,&inverter.I_V);
 		inverter.I_W=-inverter.I_U-inverter.I_V;
 		//motor ovecurrent trip
 		if(inverter.I_U>parameter_set.motor_max_current+0.7f || inverter.I_U<(-parameter_set.motor_max_current-0.7f)){inverter_error_trip(motor_overcurrent);}
