@@ -12,6 +12,7 @@
 axis_t axis={
 		.actual_position=0.0f,
 		.axis_position_change_raw=0.0f,
+		.tg_accel=0.5f,
 		.unit_factor=0.01f,
 		.position_controller_data={
 				0.0f,
@@ -27,11 +28,11 @@ void axis_update_controller_data(){
 	if(parameter_set.position_factor_denominator==0){parameter_set.position_factor_denominator=1;}
 	if(parameter_set.position_factor_numerator==0){parameter_set.position_factor_numerator=1;}
 	axis.unit_factor=(float)parameter_set.position_factor_numerator/(float)parameter_set.position_factor_denominator;
-	axis.max_tg_increment_positive=parameter_set.speed_limit_positive*axis.unit_factor*1.09225f; //max_rpm*unit_factor*(65535/(60s*1000ms))
-	axis.max_tg_increment_negative= parameter_set.speed_limit_negative*axis.unit_factor*1.09225f;
+	axis.max_tg_increment_positive=((parameter_set.speed_limit_positive*axis.unit_factor)/(inverter.control_loop_freq/10.0f))*1092.25f; //max_rpm*unit_factor*(65535/(60s*ctrl_loop_freq/10))
+	axis.max_tg_increment_negative= ((parameter_set.speed_limit_negative*axis.unit_factor)/(inverter.control_loop_freq/10.0f))*1092.25f;
 
-	axis.position_controller_data.antiwindup_limit=parameter_set.speed_limit_positive;
-	axis.position_controller_data.output_limit=parameter_set.speed_limit_positive;
+	axis.position_controller_data.antiwindup_limit=fmaxf(parameter_set.speed_limit_positive,parameter_set.speed_limit_negative)+200.0f;
+	axis.position_controller_data.output_limit=fmaxf(parameter_set.speed_limit_positive,parameter_set.speed_limit_negative)+200.0f;
 	axis.position_controller_data.proportional_gain=parameter_set.position_controller_proportional_gain/axis.unit_factor;
 	axis.position_controller_data.integral_gain=parameter_set.position_controller_integral_gain/axis.unit_factor;
 }
@@ -60,13 +61,26 @@ void update_axis_position(int32_t position_change_since_last_reading){
 int32_t axis_position_trajectory_generator(int32_t actual_demand_position,int32_t target_position){
 	float position_demand;
 	float error= target_position - actual_demand_position;
+	axis.tg_braking_distance = 0.5f * ((axis.tg_increment*axis.tg_increment)/axis.tg_accel);
 
-	if(error>axis.max_tg_increment_positive || error < -axis.max_tg_increment_negative){
-		if(error>0.0f){
-			position_demand=actual_demand_position+axis.max_tg_increment_positive;
+	if(error>axis.tg_accel){
+		if(fabs(target_position - actual_demand_position)<(axis.tg_braking_distance*1.1f)){
+			if(axis.tg_increment>axis.tg_accel)axis.tg_increment-=axis.tg_accel;
 		}else{
-			position_demand=actual_demand_position-axis.max_tg_increment_negative;
+			if(axis.tg_increment<axis.max_tg_increment_positive)axis.tg_increment+=axis.tg_accel;
 		}
+	}else if(error<-axis.tg_accel){
+		if(fabs(target_position - actual_demand_position)<(axis.tg_braking_distance*1.1f)){
+			if(axis.tg_increment<-axis.tg_accel)axis.tg_increment+=axis.tg_accel;
+		}else{
+			if(axis.tg_increment>-axis.max_tg_increment_negative)axis.tg_increment-=axis.tg_accel;
+		}
+	}else{
+		axis.tg_increment=0.0f;
+	}
+
+	if(error>axis.tg_accel || error < -axis.tg_accel){
+			position_demand=actual_demand_position+axis.tg_increment;
 	}else{
 		position_demand = target_position;
 	}

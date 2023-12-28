@@ -68,7 +68,7 @@ parameter_set_t parameter_set={
 
 inverter_t inverter={
 		.constant_values_update_needed=1, //force recalculation on first enable
-		.control_loop_freq=8000,
+		.control_loop_freq=DEFAULT_CTRL_LOOP_FREQ,
 		.error=no_error,
 		.state=not_ready_to_switch_on,
 		.control_mode=manual,
@@ -231,6 +231,7 @@ void set_ctrl_loop_frequency(uint16_t frequency){
 	inverter.speed_controller_data.sampling_time=(1.0f/inverter.control_loop_freq)*10.0f;
 	inverter.speed_ramp_generator_data.sampling_time=1.0f/(frequency/10.0f);
 	axis.position_controller_data.sampling_time=(1.0f/inverter.control_loop_freq)*10.0f;
+	update_constant_values();
 }
 /**
   * @brief  Enable PWM output of the inverter
@@ -288,6 +289,7 @@ void inverter_disable(){
 	axis.position_controller_data.last_error=0.0f;
 	axis.position_controller_data.last_integral=0.0f;
 	axis.position_controller_data.last_output=0.0f;
+	axis.error_position=0.0f;
 
 	inverter.speed_setpoint_after_rg=0.0f;
 	//inverter.speed_setpoint=0.0f;

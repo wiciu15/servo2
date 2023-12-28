@@ -21,6 +21,7 @@ typedef struct _axis_t{
 	float max_tg_increment_negative;
 	float tg_increment;
 	float tg_accel;
+	float tg_braking_distance;
 	float unit_factor; //multiply encoder pulses by this to get position in user unit
 	PID_t position_controller_data;
 }axis_t;
