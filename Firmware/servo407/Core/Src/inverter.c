@@ -17,6 +17,7 @@
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim5;
 extern ADC_HandleTypeDef hadc2;
 extern SPI_HandleTypeDef hspi2;
@@ -185,7 +186,8 @@ const inverter_error_object_t inverter_error_object[]={
 		{.error_number=internal_software,.error_number_cia402=0x6100,.error_name="Int software",.error_desc="Internal software error"},
 		{.error_number=external_comm,.error_number_cia402=0x9000,.error_name="External error",.error_desc="Error triggered by external source"},
 		{.error_number=softstart_failure,.error_number_cia402=0x5441,.error_name="Softstart fail",.error_desc="Softstart failed"},
-		{.error_number=eeprom_error,.error_number_cia402=0x5530,.error_name="EEPROM error",.error_desc="Data in EEPROM incorrect"}
+		{.error_number=eeprom_error,.error_number_cia402=0x5530,.error_name="EEPROM error",.error_desc="Data in EEPROM incorrect"},
+		{.error_number=position_error_too_big,.error_number_cia402=0x8611,.error_name="Following err",.error_desc="Following error too big"}
 };
 
 inverter_error_history_t inverter_error_history;
@@ -219,6 +221,7 @@ void inverter_setup(void){
 	if(parameter_set.motor_feedback_type == delta_encoder && delta_encoder_data.encoder_state== encoder_eeprom_reading){delta_encoder_init();}
 	HAL_TIM_Base_Start_IT(&htim5); //start main motor control loop
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); //start braking chopper
+	HAL_TIM_Base_Start(&htim4);TIM4->CNT=32768; //start STEP input timer/counter
 	inverter.state=switch_on_disabled;
 
 }
@@ -660,6 +663,7 @@ void motor_control_loop_slow(void){
 			axis.target_position=axis.actual_position;
 			axis.target_position_from_tg=axis.actual_position;
 			inverter.speed_setpoint = 0.0f;
+			TIM4->CNT=32768;
 		}else{
 			inverter.speed_setpoint = axis_positioning_loop();
 		}

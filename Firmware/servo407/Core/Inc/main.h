@@ -103,10 +103,11 @@ void Error_Handler(void);
 #define BTN_DOWN_GPIO_Port GPIOD
 #define BTN_BACK_Pin GPIO_PIN_11
 #define BTN_BACK_GPIO_Port GPIOD
-#define STEP_F_Pin GPIO_PIN_12
-#define STEP_F_GPIO_Port GPIOD
-#define STEP_R_Pin GPIO_PIN_13
-#define STEP_R_GPIO_Port GPIOD
+#define STEP_IN_Pin GPIO_PIN_12
+#define STEP_IN_GPIO_Port GPIOD
+#define DIR_IN_Pin GPIO_PIN_13
+#define DIR_IN_GPIO_Port GPIOD
+#define DIR_IN_EXTI_IRQn EXTI15_10_IRQn
 #define LED_STATUS_Pin GPIO_PIN_14
 #define LED_STATUS_GPIO_Port GPIOD
 #define LED_ERROR_Pin GPIO_PIN_15

@@ -49,7 +49,18 @@ void update_axis_position(int32_t position_change_since_last_reading){
 	if(position_change_since_last_reading<-32000){
 		increment+=65535;
 	}
-	axis.actual_position -=(float)increment*axis.unit_factor;
+	axis.actual_position_raw-=increment;
+	axis.actual_position =axis.actual_position_raw*axis.unit_factor;
+}
+
+/**
+ * @brief  This function updates target axis position
+ * @param pulses on step pin since last update
+ */
+void update_step_input_pulses(){
+	int32_t increment = (int32_t)TIM4->CNT-32768; //get pulses number
+	TIM4->CNT=32768; //reset timer counter
+	axis.target_position +=increment;
 }
 
 /**
@@ -92,6 +103,7 @@ int32_t axis_position_trajectory_generator(int32_t actual_demand_position,int32_
  * @retval speed demand in RPM
  */
 float axis_positioning_loop (void){
+	update_step_input_pulses();
 	if(inverter.control_mode == foc_position_profile){
 		axis.target_position_from_tg = axis_position_trajectory_generator(axis.target_position_from_tg,axis.target_position);
 		axis.error_position = (float)axis.target_position_from_tg-axis.actual_position;
@@ -99,6 +111,7 @@ float axis_positioning_loop (void){
 	if(inverter.control_mode == foc_position_interpolated){
 		axis.error_position = (float)axis.target_position-axis.actual_position;
 	}
+	if(axis.error_position>1000 || axis.error_position<-1000){inverter_error_trip(position_error_too_big);}
 	float speed_demand = PI_control(&axis.position_controller_data,axis.error_position);
 	return speed_demand;
 }

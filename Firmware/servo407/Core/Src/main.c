@@ -96,7 +96,7 @@ const osThreadAttr_t taskModbusUSB_attributes = {
 osThreadId_t uiTaskHandle;
 const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
-  .stack_size = 1024 * 4,
+  .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for timerSoftstart */
@@ -731,7 +731,7 @@ static void MX_TIM1_Init(void)
   sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
   sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
   sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 100;
+  sBreakDeadTimeConfig.DeadTime = 90;
   sBreakDeadTimeConfig.BreakState = TIM_BREAK_ENABLE;
   sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
   sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
@@ -856,8 +856,8 @@ static void MX_TIM4_Init(void)
 
   /* USER CODE END TIM4_Init 0 */
 
+  TIM_SlaveConfigTypeDef sSlaveConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_IC_InitTypeDef sConfigIC = {0};
 
   /* USER CODE BEGIN TIM4_Init 1 */
 
@@ -868,25 +868,21 @@ static void MX_TIM4_Init(void)
   htim4.Init.Period = 65535;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_IC_Init(&htim4) != HAL_OK)
+  if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sSlaveConfig.SlaveMode = TIM_SLAVEMODE_EXTERNAL1;
+  sSlaveConfig.InputTrigger = TIM_TS_TI1FP1;
+  sSlaveConfig.TriggerPolarity = TIM_TRIGGERPOLARITY_FALLING;
+  sSlaveConfig.TriggerFilter = 0;
+  if (HAL_TIM_SlaveConfigSynchro(&htim4, &sSlaveConfig) != HAL_OK)
   {
     Error_Handler();
   }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigIC.ICPolarity = TIM_INPUTCHANNELPOLARITY_RISING;
-  sConfigIC.ICSelection = TIM_ICSELECTION_DIRECTTI;
-  sConfigIC.ICPrescaler = TIM_ICPSC_DIV1;
-  sConfigIC.ICFilter = 0;
-  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_IC_ConfigChannel(&htim4, &sConfigIC, TIM_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -1132,6 +1128,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : DIR_IN_Pin */
+  GPIO_InitStruct.Pin = DIR_IN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(DIR_IN_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : LED_STATUS_Pin LED_ERROR_Pin ETH_RESET_Pin ETH_CS_Pin
                            MODBUS_DE_Pin */
   GPIO_InitStruct.Pin = LED_STATUS_Pin|LED_ERROR_Pin|ETH_RESET_Pin|ETH_CS_Pin
@@ -1160,6 +1162,9 @@ static void MX_GPIO_Init(void)
 
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 5, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -1212,6 +1217,15 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi){
 	}
 }
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if(GPIO_Pin == GPIO_PIN_13) {
+	 if(((DIR_IN_GPIO_Port->IDR) & DIR_IN_Pin) != (uint32_t)GPIO_PIN_RESET){TIM4->CR1&= ~(1 << 4);} //dir input polarity is reversed
+	 //HAL_GPIO_ReadPin(DIR_IN_GPIO_Port, DIR_IN_Pin);
+	 else{TIM4->CR1|=1<<4;}//change STEP input timer counting direction to downcounting,
+  }
+}
+
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -1223,9 +1237,9 @@ void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef * hspi){
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void *argument)
 {
-	/* init code for USB_DEVICE */
-	MX_USB_DEVICE_Init();
-	/* USER CODE BEGIN 5 */
+  /* init code for USB_DEVICE */
+  MX_USB_DEVICE_Init();
+  /* USER CODE BEGIN 5 */
 	osThreadSuspend(taskModbusUSBHandle);//start usb communication task
 	inverter_setup();
 	osThreadResume(taskModbusUSBHandle);//start usb communication task
@@ -1236,7 +1250,7 @@ void StartDefaultTask(void *argument)
 		DCBus_voltage_check();
 		osDelay(1);
 	}
-	/* USER CODE END 5 */
+  /* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_StartTaskModbusUSB */
@@ -1270,7 +1284,7 @@ void StartTaskModbusUSB(void *argument)
 /* USER CODE END Header_uiTaskStart */
 void uiTaskStart(void *argument)
 {
-	/* USER CODE BEGIN uiTaskStart */
+  /* USER CODE BEGIN uiTaskStart */
 	osTimerStart(LEDTimerHandle, 100);
 	display_init();
 	osThreadSuspend(uiTaskHandle);
@@ -1280,24 +1294,24 @@ void uiTaskStart(void *argument)
 	{
 		draw();
 	}
-	/* USER CODE END uiTaskStart */
+  /* USER CODE END uiTaskStart */
 }
 
 /* timerSoftstartCallback function */
 void timerSoftstartCallback(void *argument)
 {
-	/* USER CODE BEGIN timerSoftstartCallback */
+  /* USER CODE BEGIN timerSoftstartCallback */
 	if(inverter.DCbus_voltage>=inverter.undervoltage_limit+10.0f){
 		HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 1);
 		inverter.softstart_finished=1;
 	}
-	/* USER CODE END timerSoftstartCallback */
+  /* USER CODE END timerSoftstartCallback */
 }
 
 /* LEDTimerCallback function */
 void LEDTimerCallback(void *argument)
 {
-	/* USER CODE BEGIN LEDTimerCallback */
+  /* USER CODE BEGIN LEDTimerCallback */
 	if(HAL_TIM_Base_GetState(&htim5)==HAL_TIM_STATE_BUSY){
 		switch(inverter.state){
 		case operation_enabled:  //status on error off
@@ -1326,12 +1340,12 @@ void LEDTimerCallback(void *argument)
 		HAL_GPIO_WritePin(LED_STATUS_GPIO_Port, LED_STATUS_Pin, 1);
 		HAL_GPIO_WritePin(LED_ERROR_GPIO_Port, LED_ERROR_Pin, 1);
 	}
-	/* USER CODE END LEDTimerCallback */
+  /* USER CODE END LEDTimerCallback */
 }
 
 /**
- * @brief  Period elapsed callback in non blocking mode
- * @note   This function is called  when TIM11 interrupt took place, inside
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM11 interrupt took place, inside
   * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
   * a global variable "uwTick" used as application time base.
   * @param  htim : TIM handle

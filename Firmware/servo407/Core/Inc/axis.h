@@ -12,6 +12,7 @@
 
 typedef struct _axis_t{
 	int32_t axis_position_change_raw; //value holding change in position that has not been recalculated to user unit and updated in axis position
+	int64_t actual_position_raw;
 	float actual_position;
 	int32_t target_position;
 	int32_t target_position_from_tg;//target position after applying target generator ramps to it
@@ -30,6 +31,7 @@ extern axis_t axis;
 
 void axis_update_controller_data(void);
 void update_axis_position(int32_t position_change_since_last_reading);
+void update_step_input_pulses();
 int32_t axis_position_trajectory_generator(int32_t actual_demand_position,int32_t target_position);
 float axis_positioning_loop (void);
 

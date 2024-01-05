@@ -56,6 +56,7 @@ typedef enum {no_error=0x0000,
 	external_comm,
 	softstart_failure,
 	eeprom_error,
+	position_error_too_big,
 	inverter_error_count
 }inverter_error_t;
 
