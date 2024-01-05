@@ -35,6 +35,7 @@ or indirectly by this software/hardware. The board is mains-powered. High voltag
 
 - ramp generators and limiters for control loops
 - position loop
+- I2t monitoring of motor
 - sensorless rotor angle aquisition
 - fieldbus control (MODBUS RS485, CANopen)
 - analog and digital I/O
