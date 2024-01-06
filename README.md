@@ -6,6 +6,7 @@ This is a project of a servo inverter to drive 3-phase AC motor with/out encoder
 It's in alpha development so there are many bugs and things included in software but not really working/tested.
 
 DEMO video: https://www.youtube.com/watch?v=Hu02lt5aCbM
+CNC DEMO: https://www.youtube.com/watch?v=LXm4no8DIPE
 ![CPU board](https://github.com/wiciu15/servo2/blob/main/PCB/assembly.JPG?raw=true)
 
 This is a free software under the GNU license, you can redistribute it and/or modify it under the terms
