@@ -15,6 +15,7 @@ typedef struct _axis_t{
 	int64_t actual_position_raw;
 	float actual_position;
 	int32_t target_position;
+	int32_t last_step_pulses;
 	int32_t target_position_from_tg;//target position after applying target generator ramps to it
 	float error_position;
 	int32_t next_target_position;

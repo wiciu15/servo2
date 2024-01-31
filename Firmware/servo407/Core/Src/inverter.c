@@ -664,6 +664,7 @@ void motor_control_loop_slow(void){
 			axis.target_position_from_tg=axis.actual_position;
 			inverter.speed_setpoint = 0.0f;
 			TIM4->CNT=32768;
+			axis.last_step_pulses=0;
 		}else{
 			inverter.speed_setpoint = axis_positioning_loop();
 		}

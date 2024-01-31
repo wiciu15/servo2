@@ -14,6 +14,7 @@ axis_t axis={
 		.axis_position_change_raw=0.0f,
 		.tg_accel=0.5f,
 		.unit_factor=0.01f,
+		.last_step_pulses=0.0f,
 		.position_controller_data={
 				0.0f,
 				0.0f,
@@ -58,8 +59,17 @@ void update_axis_position(int32_t position_change_since_last_reading){
  * @param pulses on step pin since last update
  */
 void update_step_input_pulses(){
-	int32_t increment = (int32_t)TIM4->CNT-32768; //get pulses number
-	TIM4->CNT=32768; //reset timer counter
+	int32_t increment=0;
+	int32_t rcv_pulses = (int32_t)TIM4->CNT-32768; //get pulses number
+	//if near timer counter overflow reset counter. this operation will sometimes lose pulses if  counter increments between counter read and counter write
+	if(TIM4->CNT>62000 || TIM4->CNT<2000){
+		TIM4->CNT=32768; //reset timer counter
+		increment=rcv_pulses-axis.last_step_pulses;
+		axis.last_step_pulses=0;
+	}else{
+		increment = rcv_pulses-axis.last_step_pulses;
+		axis.last_step_pulses=rcv_pulses;
+	}
 	axis.target_position +=increment;
 }
 

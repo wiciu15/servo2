@@ -28,6 +28,7 @@
 #include "comm_modbus.h"
 #include "user_interface.h"
 #include "eeprom.h"
+#include "CO_app_STM32.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -72,6 +73,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
+TIM_HandleTypeDef htim6;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -98,6 +100,13 @@ const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
   .stack_size = 512 * 4,
   .priority = (osPriority_t) osPriorityBelowNormal,
+};
+/* Definitions for canopen */
+osThreadId_t canopenHandle;
+const osThreadAttr_t canopen_attributes = {
+  .name = "canopen",
+  .stack_size = 1024 * 4,
+  .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for timerSoftstart */
 osTimerId_t timerSoftstartHandle;
@@ -138,9 +147,11 @@ static void MX_I2C1_Init(void);
 static void MX_SPI3_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM5_Init(void);
+static void MX_TIM6_Init(void);
 void StartDefaultTask(void *argument);
 void StartTaskModbusUSB(void *argument);
 void uiTaskStart(void *argument);
+void canopen_task(void *argument);
 void timerSoftstartCallback(void *argument);
 void LEDTimerCallback(void *argument);
 
@@ -197,6 +208,7 @@ int main(void)
   MX_SPI3_Init();
   MX_TIM2_Init();
   MX_TIM5_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -237,6 +249,9 @@ int main(void)
 
   /* creation of uiTask */
   uiTaskHandle = osThreadNew(uiTaskStart, NULL, &uiTask_attributes);
+
+  /* creation of canopen */
+  canopenHandle = osThreadNew(canopen_task, NULL, &canopen_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* adddefaultTaskHandle ... */
@@ -444,15 +459,15 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 16;
+  hcan1.Init.Prescaler = 21;
   hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan1.Init.TimeSeg1 = CAN_BS1_1TQ;
-  hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_13TQ;
+  hcan1.Init.TimeSeg2 = CAN_BS2_2TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
   hcan1.Init.AutoBusOff = DISABLE;
   hcan1.Init.AutoWakeUp = DISABLE;
-  hcan1.Init.AutoRetransmission = DISABLE;
+  hcan1.Init.AutoRetransmission = ENABLE;
   hcan1.Init.ReceiveFifoLocked = DISABLE;
   hcan1.Init.TransmitFifoPriority = DISABLE;
   if (HAL_CAN_Init(&hcan1) != HAL_OK)
@@ -938,6 +953,44 @@ static void MX_TIM5_Init(void)
 }
 
 /**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 3;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 20999;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -1297,6 +1350,32 @@ void uiTaskStart(void *argument)
   /* USER CODE END uiTaskStart */
 }
 
+/* USER CODE BEGIN Header_canopen_task */
+/**
+* @brief Function implementing the canopen thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_canopen_task */
+void canopen_task(void *argument)
+{
+  /* USER CODE BEGIN canopen_task */
+	CANopenNodeSTM32 canOpenNodeSTM32;
+	canOpenNodeSTM32.CANHandle = &hcan1;
+	canOpenNodeSTM32.HWInitFunction = MX_CAN1_Init;
+	canOpenNodeSTM32.timerHandle = &htim6;
+	canOpenNodeSTM32.desiredNodeID = 2;
+	canOpenNodeSTM32.baudrate = 125;
+	canopen_app_init(&canOpenNodeSTM32);
+	/* Infinite loop */
+	for(;;)
+	{
+		canopen_app_process();
+		osDelay(1);
+	}
+  /* USER CODE END canopen_task */
+}
+
 /* timerSoftstartCallback function */
 void timerSoftstartCallback(void *argument)
 {
@@ -1360,7 +1439,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-
+  if(htim->Instance == TIM6) {
+	  canopen_app_interrupt();
+	  HAL_GPIO_TogglePin(ETH_RESET_GPIO_Port, ETH_RESET_Pin);
+  }
   /* USER CODE END Callback 1 */
 }
 
