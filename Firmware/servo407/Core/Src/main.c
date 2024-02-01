@@ -105,7 +105,7 @@ const osThreadAttr_t uiTask_attributes = {
 osThreadId_t canopenHandle;
 const osThreadAttr_t canopen_attributes = {
   .name = "canopen",
-  .stack_size = 1024 * 4,
+  .stack_size = 2048 * 4,
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for timerSoftstart */

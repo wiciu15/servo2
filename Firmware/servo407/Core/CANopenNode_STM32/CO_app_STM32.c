@@ -31,7 +31,7 @@
 
 #include "CO_storageBlank.h"
 #include "OD.h"
-
+#include "inverter.h"
 CANopenNodeSTM32*
     canopenNodeSTM32; // It will be set by canopen_app_init and will be used across app to get access to CANOpen objects
 
@@ -201,7 +201,11 @@ canopen_app_resetCommunication() {
 void
 canopen_app_process() {
     /* loop for normal program execution ******************************************/
+	OD_set_i32(OD_find(OD, 0x6064), 0, (int32_t)axis.actual_position, 0);
+	OD_set_i32(OD_find(OD, 0x606C), 0, (int32_t)inverter.filtered_rotor_speed, 0);
     /* get time difference since last function call */
+
+
     time_current = HAL_GetTick();
 
     if ((time_current - time_old) > 0) { // Make sure more than 1ms elapsed
