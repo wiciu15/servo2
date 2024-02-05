@@ -41,6 +41,7 @@ extern const parameter_t monitor_list[];
 extern uint16_t parameter_list_size;
 extern uint16_t monitor_list_size;
 
+uint16_t par_get_index_CAN(uint16_t CAN_address);
 HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue);
 HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue);
 

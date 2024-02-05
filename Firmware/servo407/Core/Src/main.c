@@ -459,10 +459,10 @@ static void MX_CAN1_Init(void)
 
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
-  hcan1.Init.Prescaler = 21;
+  hcan1.Init.Prescaler = 6;
   hcan1.Init.Mode = CAN_MODE_NORMAL;
   hcan1.Init.SyncJumpWidth = CAN_SJW_1TQ;
-  hcan1.Init.TimeSeg1 = CAN_BS1_13TQ;
+  hcan1.Init.TimeSeg1 = CAN_BS1_11TQ;
   hcan1.Init.TimeSeg2 = CAN_BS2_2TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
   hcan1.Init.AutoBusOff = DISABLE;
@@ -1366,6 +1366,7 @@ void canopen_task(void *argument)
 	canOpenNodeSTM32.timerHandle = &htim6;
 	canOpenNodeSTM32.desiredNodeID = 2;
 	canOpenNodeSTM32.baudrate = 125;
+	initialize_OD_extensions(); //initalize custom read/write functions of parameter list
 	canopen_app_init(&canOpenNodeSTM32);
 	/* Infinite loop */
 	for(;;)

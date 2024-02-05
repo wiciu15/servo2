@@ -201,8 +201,7 @@ canopen_app_resetCommunication() {
 void
 canopen_app_process() {
     /* loop for normal program execution ******************************************/
-	OD_set_i32(OD_find(OD, 0x6064), 0, (int32_t)axis.actual_position, 0);
-	OD_set_i32(OD_find(OD, 0x606C), 0, (int32_t)inverter.filtered_rotor_speed, 0);
+
     /* get time difference since last function call */
 
 

@@ -13,13 +13,13 @@ HAL_StatusTypeDef limiter(parameter_t * par, void * pValue, void * pReturnValue)
 HAL_StatusTypeDef prepare_received_data(parameter_t * par, uint32_t * pReceivedData, void * pReturnValue);
 
 const parameter_t parameter_list[]={
-		{.number=1,.ModbusAddress=1,.CANAddress=1111,.name={"Actual speed"},.shortName={"Act spd"},.description={"Actual motor speed"},.WriteAllowed=0,.precision=0,.unit="RPM",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-10000.0f,.maxValue=10000.0f,.defaultValue=0.0f},
+		{.number=1,.ModbusAddress=1,.CANAddress=0x606C,.name={"Actual speed"},.shortName={"Act spd"},.description={"Actual motor speed"},.WriteAllowed=0,.precision=0,.unit="RPM",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-10000.0f,.maxValue=10000.0f,.defaultValue=0.0f},
 		{.number=2,.ModbusAddress=2,.CANAddress=1111,.name={"Apparent current"},.shortName={"I mot"},.description={"Actual motor RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
 		{.number=3,.ModbusAddress=3,.CANAddress=1111,.name={"Magnetizing current"},.shortName={"I mag"},.description={"Magnetizing RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
 		{.number=4,.ModbusAddress=4,.CANAddress=1111,.name={"Torque current"},.shortName={"I trq"},.description={"Torque-producing RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
 		{.number=5,.ModbusAddress=5,.CANAddress=1111,.name={"Motor torque"},.shortName={"Mot trq"},.description={"Actaul motor torque in %"},.WriteAllowed=0,.precision=1,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-1000.0f,.maxValue=1000.0f,.defaultValue=0.0f},
 		{.number=6,.ModbusAddress=6,.CANAddress=1111,.name={"Actual position L"},.shortName={"Act posL"},.description={"Actual rotor position low word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32768.0f,.maxValue=32767.0f,.defaultValue=0.0f},
-		{.number=7,.ModbusAddress=7,.CANAddress=1111,.name={"Actual position H"},.shortName={"Act posH"},.description={"Actual axis position high word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32768.0f,.maxValue=32767.0f,.defaultValue=0.0f},
+		{.number=7,.ModbusAddress=7,.CANAddress=0x6064,.name={"Actual position H"},.shortName={"Act posH"},.description={"Actual axis position high word"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32768.0f,.maxValue=32767.0f,.defaultValue=0.0f},
 		{.number=8,.ModbusAddress=8,.CANAddress=1111,.name={"Target position L"},.shortName={"Tht posL"},.description={"Target axis position high word"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32768.0f,.maxValue=32767.0f,.defaultValue=0.0f},
 		{.number=9,.ModbusAddress=9,.CANAddress=1111,.name={"Target position H"},.shortName={"Tgt posH"},.description={"Target axis position high word"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-32768.0f,.maxValue=32767.0f,.defaultValue=0.0f},
 		{.number=10,.ModbusAddress=10,.CANAddress=1111,.name={"Motor voltage"},.shortName={"U mot"},.description={"Actual motor RMS voltage"},.WriteAllowed=0,.precision=1,.unit="V",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
@@ -37,8 +37,8 @@ const parameter_t parameter_list[]={
 		{.number=28,.ModbusAddress=28,.CANAddress=1111,.name={"Error history 8"},.shortName={"Err8"},.description={"Error history 8"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=29,.ModbusAddress=29,.CANAddress=1111,.name={"Error history 9"},.shortName={"Err9"},.description={"Error history 9"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 
-		{.number=30,.ModbusAddress=30,.CANAddress=1111,.name={"Status register"},.shortName={"Sts reg"},.description={"Status register"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pBOOL16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
-		{.number=31,.ModbusAddress=31,.CANAddress=1111,.name={"Control register"},.shortName={"Ctl reg"},.description={"Control register"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pBOOL16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
+		{.number=30,.ModbusAddress=30,.CANAddress=0x6041,.name={"Status register"},.shortName={"Sts reg"},.description={"Status register"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pBOOL16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
+		{.number=31,.ModbusAddress=31,.CANAddress=0x6040,.name={"Control register"},.shortName={"Ctl reg"},.description={"Control register"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pBOOL16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=32,.ModbusAddress=32,.CANAddress=1111,.name={"Target speed"},.shortName={"Tgt spd"},.description={"Target speed"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-30000.0f,.maxValue=30000.0f,.defaultValue=0.0f},
 		{.number=33,.ModbusAddress=33,.CANAddress=1111,.name={"Target torque"},.shortName={"Tgt trq"},.description={"Target torque"},.WriteAllowed=1,.precision=2,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
 		{.number=34,.ModbusAddress=34,.CANAddress=1111,.name={"Field target"},.shortName={"Fld trq"},.description={"Target field"},.WriteAllowed=1,.precision=2,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
@@ -602,3 +602,9 @@ HAL_StatusTypeDef prepare_received_data(parameter_t * par, uint32_t * pReceivedD
 	return status;
 }
 
+uint16_t par_get_index_CAN(uint16_t CAN_address){
+	for(uint16_t i=0;i<parameter_list_size;i++){
+		if(parameter_list[i].CANAddress==CAN_address)return i;
+	}
+	return 0xFFFF;
+}
