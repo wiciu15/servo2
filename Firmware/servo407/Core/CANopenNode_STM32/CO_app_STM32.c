@@ -63,8 +63,8 @@ canopen_app_init(CANopenNodeSTM32* _canopenNodeSTM32) {
     canopenNodeSTM32 = _canopenNodeSTM32;
 
 #if (CO_CONFIG_STORAGE) & CO_CONFIG_STORAGE_ENABLE
-    CO_storage_t storage;
-    CO_storage_entry_t storageEntries[] = {{.addr = &OD_PERSIST_COMM,
+    static CO_storage_t storage;
+    static CO_storage_entry_t storageEntries[] = {{.addr = &OD_PERSIST_COMM,
                                             .len = sizeof(OD_PERSIST_COMM),
                                             .subIndexOD = 2,
                                             .attr = CO_storage_cmd | CO_storage_restore,

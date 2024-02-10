@@ -36,8 +36,8 @@ typedef struct _parameter_t{
 	float maxValue;
 }parameter_t;
 
-extern const parameter_t parameter_list[];
-extern const parameter_t monitor_list[];
+extern parameter_t parameter_list[];
+extern parameter_t monitor_list[];
 extern uint16_t parameter_list_size;
 extern uint16_t monitor_list_size;
 

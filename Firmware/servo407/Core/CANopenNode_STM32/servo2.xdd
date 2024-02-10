@@ -15,7 +15,7 @@
         <ProfileTechnology>CANopen</ProfileTechnology>
       </ISO15745Reference>
     </ProfileHeader>
-    <ProfileBody xmlns:q1="http://www.canopen.org/xml/1.1" xsi:type="q1:ProfileBody_Device_CANopen" formatName="CANopen" formatVersion="1.0" fileName="servo2.xdd" fileCreator="" fileCreationDate="2024-01-31" fileCreationTime="22:45:37.0000000+01:00" fileModifiedBy="" fileModificationDate="2024-02-05" fileModificationTime="16:30:25.3955631+01:00" fileVersion="1" supportedLanguages="en" xmlns="">
+    <ProfileBody xmlns:q1="http://www.canopen.org/xml/1.1" xsi:type="q1:ProfileBody_Device_CANopen" formatName="CANopen" formatVersion="1.0" fileName="servo2.xdd" fileCreator="" fileCreationDate="2024-01-31" fileCreationTime="22:45:37.0000000+01:00" fileModifiedBy="" fileModificationDate="2024-02-10" fileModificationTime="23:47:48.6335477+01:00" fileVersion="1" supportedLanguages="en" xmlns="">
       <q1:DeviceIdentity>
         <q1:vendorName>aja</q1:vendorName>
         <q1:vendorID>112</q1:vendorID>
@@ -3020,6 +3020,16 @@
             <DINT />
             <q1:defaultValue value="0" />
           </q1:parameter>
+          <q1:parameter uniqueID="UID_OBJ_6083" access="readWrite">
+            <label lang="en">Profile acceleration</label>
+            <UDINT />
+            <q1:defaultValue value="0" />
+          </q1:parameter>
+          <q1:parameter uniqueID="UID_OBJ_6084" access="readWrite">
+            <label lang="en">Profile deceleration</label>
+            <UDINT />
+            <q1:defaultValue value="0" />
+          </q1:parameter>
           <q1:parameter uniqueID="UID_OBJ_60FF" access="readWriteOutput">
             <label lang="en">Target velocity (pv)</label>
             <DINT />
@@ -3052,7 +3062,7 @@
         <ProfileTechnology>CANopen</ProfileTechnology>
       </ISO15745Reference>
     </ProfileHeader>
-    <ProfileBody xmlns:q2="http://www.canopen.org/xml/1.1" xsi:type="q2:ProfileBody_CommunicationNetwork_CANopen" formatName="CANopen" formatVersion="1.0" fileName="servo2.xdd" fileCreator="" fileCreationDate="2024-01-31" fileCreationTime="22:45:37.0000000+01:00" fileModificationDate="2024-02-05" fileModificationTime="16:30:25.3955631+01:00" fileVersion="1" supportedLanguages="en" xmlns="">
+    <ProfileBody xmlns:q2="http://www.canopen.org/xml/1.1" xsi:type="q2:ProfileBody_CommunicationNetwork_CANopen" formatName="CANopen" formatVersion="1.0" fileName="servo2.xdd" fileCreator="" fileCreationDate="2024-01-31" fileCreationTime="22:45:37.0000000+01:00" fileModificationDate="2024-02-10" fileModificationTime="23:47:48.6335477+01:00" fileVersion="1" supportedLanguages="en" xmlns="">
       <ApplicationLayers>
         <q2:CANopenObjectList>
           <CANopenObject index="1000" name="Device type" objectType="7" PDOmapping="no" uniqueIDRef="UID_OBJ_1000" />
@@ -3480,6 +3490,8 @@
           <CANopenObject index="606C" name="Velocity actual value" objectType="7" PDOmapping="TPDO" uniqueIDRef="UID_OBJ_606C" />
           <CANopenObject index="6071" name="Target torque" objectType="7" PDOmapping="RPDO" uniqueIDRef="UID_OBJ_6071" />
           <CANopenObject index="607A" name="Target position" objectType="7" PDOmapping="RPDO" uniqueIDRef="UID_OBJ_607A" />
+          <CANopenObject index="6083" name="Profile acceleration" objectType="7" PDOmapping="optional" uniqueIDRef="UID_OBJ_6083" />
+          <CANopenObject index="6084" name="Profile deceleration" objectType="7" PDOmapping="optional" uniqueIDRef="UID_OBJ_6084" />
           <CANopenObject index="60FF" name="Target velocity (pv)" objectType="7" PDOmapping="RPDO" uniqueIDRef="UID_OBJ_60FF" />
           <CANopenObject index="6502" name="Supported modes of operation" objectType="7" PDOmapping="no" uniqueIDRef="UID_OBJ_6502" />
           <CANopenObject index="67FF" name="Single device type" objectType="7" PDOmapping="no" uniqueIDRef="UID_OBJ_67FF" />

@@ -26,12 +26,14 @@
 #include "inverter.h"
 #include <math.h>
 #include "comm_modbus.h"
+#include "comm_canopen.h"
 #include "user_interface.h"
 #include "eeprom.h"
 #include "CO_app_STM32.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
+typedef StaticTask_t osStaticThreadDef_t;
 typedef StaticTimer_t osStaticTimerDef_t;
 /* USER CODE BEGIN PTD */
 
@@ -96,16 +98,26 @@ const osThreadAttr_t taskModbusUSB_attributes = {
 };
 /* Definitions for uiTask */
 osThreadId_t uiTaskHandle;
+uint32_t uiTaskBuffer[ 512 ];
+osStaticThreadDef_t uiTaskControlBlock;
 const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
-  .stack_size = 512 * 4,
+  .cb_mem = &uiTaskControlBlock,
+  .cb_size = sizeof(uiTaskControlBlock),
+  .stack_mem = &uiTaskBuffer[0],
+  .stack_size = sizeof(uiTaskBuffer),
   .priority = (osPriority_t) osPriorityBelowNormal,
 };
 /* Definitions for canopen */
 osThreadId_t canopenHandle;
+uint32_t canopenBuffer[ 4096 ];
+osStaticThreadDef_t canopenControlBlock;
 const osThreadAttr_t canopen_attributes = {
   .name = "canopen",
-  .stack_size = 2048 * 4,
+  .cb_mem = &canopenControlBlock,
+  .cb_size = sizeof(canopenControlBlock),
+  .stack_mem = &canopenBuffer[0],
+  .stack_size = sizeof(canopenBuffer),
   .priority = (osPriority_t) osPriorityNormal1,
 };
 /* Definitions for timerSoftstart */
@@ -465,7 +477,7 @@ static void MX_CAN1_Init(void)
   hcan1.Init.TimeSeg1 = CAN_BS1_11TQ;
   hcan1.Init.TimeSeg2 = CAN_BS2_2TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
-  hcan1.Init.AutoBusOff = DISABLE;
+  hcan1.Init.AutoBusOff = ENABLE;
   hcan1.Init.AutoWakeUp = DISABLE;
   hcan1.Init.AutoRetransmission = ENABLE;
   hcan1.Init.ReceiveFifoLocked = DISABLE;
@@ -1365,8 +1377,8 @@ void canopen_task(void *argument)
 	canOpenNodeSTM32.HWInitFunction = MX_CAN1_Init;
 	canOpenNodeSTM32.timerHandle = &htim6;
 	canOpenNodeSTM32.desiredNodeID = 2;
-	canOpenNodeSTM32.baudrate = 125;
-	initialize_OD_extensions(); //initalize custom read/write functions of parameter list
+	canOpenNodeSTM32.baudrate = 250;
+	initialize_OD_extensions(); //initialize custom read/write functions of parameter list
 	canopen_app_init(&canOpenNodeSTM32);
 	/* Infinite loop */
 	for(;;)

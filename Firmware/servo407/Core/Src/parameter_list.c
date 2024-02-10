@@ -12,7 +12,7 @@
 HAL_StatusTypeDef limiter(parameter_t * par, void * pValue, void * pReturnValue);
 HAL_StatusTypeDef prepare_received_data(parameter_t * par, uint32_t * pReceivedData, void * pReturnValue);
 
-const parameter_t parameter_list[]={
+parameter_t parameter_list[]={
 		{.number=1,.ModbusAddress=1,.CANAddress=0x606C,.name={"Actual speed"},.shortName={"Act spd"},.description={"Actual motor speed"},.WriteAllowed=0,.precision=0,.unit="RPM",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-10000.0f,.maxValue=10000.0f,.defaultValue=0.0f},
 		{.number=2,.ModbusAddress=2,.CANAddress=1111,.name={"Apparent current"},.shortName={"I mot"},.description={"Actual motor RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
 		{.number=3,.ModbusAddress=3,.CANAddress=1111,.name={"Magnetizing current"},.shortName={"I mag"},.description={"Magnetizing RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
@@ -39,8 +39,8 @@ const parameter_t parameter_list[]={
 
 		{.number=30,.ModbusAddress=30,.CANAddress=0x6041,.name={"Status register"},.shortName={"Sts reg"},.description={"Status register"},.WriteAllowed=0,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pBOOL16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
 		{.number=31,.ModbusAddress=31,.CANAddress=0x6040,.name={"Control register"},.shortName={"Ctl reg"},.description={"Control register"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pBOOL16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65535.0f,.defaultValue=0.0f},
-		{.number=32,.ModbusAddress=32,.CANAddress=1111,.name={"Target speed"},.shortName={"Tgt spd"},.description={"Target speed"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-30000.0f,.maxValue=30000.0f,.defaultValue=0.0f},
-		{.number=33,.ModbusAddress=33,.CANAddress=1111,.name={"Target torque"},.shortName={"Tgt trq"},.description={"Target torque"},.WriteAllowed=1,.precision=2,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
+		{.number=32,.ModbusAddress=32,.CANAddress=0x60FF,.name={"Target speed"},.shortName={"Tgt spd"},.description={"Target speed"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-30000.0f,.maxValue=30000.0f,.defaultValue=0.0f},
+		{.number=33,.ModbusAddress=33,.CANAddress=0x6071,.name={"Target torque"},.shortName={"Tgt trq"},.description={"Target torque"},.WriteAllowed=1,.precision=2,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
 		{.number=34,.ModbusAddress=34,.CANAddress=1111,.name={"Field target"},.shortName={"Fld trq"},.description={"Target field"},.WriteAllowed=1,.precision=2,.unit="%",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
 		{.number=35,.ModbusAddress=35,.CANAddress=1111,.name={"Open loop freq"},.shortName={"OL freq"},.description={"Actual output frequency in uf/open loop mode"},.WriteAllowed=0,.precision=1,.unit="Hz",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=-650.0f,.maxValue=650.0f,.defaultValue=0.0f},
 		{.number=36,.ModbusAddress=36,.CANAddress=1111,.name={"Target open loop freq"},.shortName={"Freq tgt"},.description={"Output frequency target in uf/open loop mode"},.WriteAllowed=1,.precision=1,.unit="Hz",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=-650.0f,.maxValue=650.0f,.defaultValue=0.0f},
@@ -54,7 +54,7 @@ const parameter_t parameter_list[]={
 		{.number=45,.ModbusAddress=45,.CANAddress=1111,.name={"V current"},.shortName={"I V"},.description={"Actual V phase current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
 		{.number=46,.ModbusAddress=46,.CANAddress=1111,.name={"W current"},.shortName={"I W"},.description={"Actual W phase current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-300.0f,.maxValue=300.0f,.defaultValue=0.0f},
 
-		{.number=100,.ModbusAddress=100,.CANAddress=1111,.name={"Motor control mode"},.shortName={"Ctl mode"},.description={"Motion control mode"},.WriteAllowed=2,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-5.0f,.maxValue=7.0f,.defaultValue=1.0f},
+		{.number=100,.ModbusAddress=100,.CANAddress=0x6060,.name={"Motor control mode"},.shortName={"Ctl mode"},.description={"Motion control mode"},.WriteAllowed=2,.precision=0,.unit="",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-5.0f,.maxValue=7.0f,.defaultValue=1.0f},
 		{.number=101,.ModbusAddress=101,.CANAddress=1111,.name={"Save EEPROM"},.shortName={"Save par"},.description={"Save parameters in non-volatile memory"},.WriteAllowed=1,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=1.0f,.defaultValue=0.0f},
 
 		{.number=120,.ModbusAddress=120,.CANAddress=1111,.name={"Factor Numerator"},.shortName={"Fct num"},.description={"Encoder scaling factor - numerator"},.WriteAllowed=2,.precision=0,.unit="",.ModbusDataType=mbUINT16,.type=pUINT16,.multiplierMB=1.0f,.minValue=1.0f,.maxValue=65535.0f,.defaultValue=0.0f},
@@ -79,8 +79,8 @@ const parameter_t parameter_list[]={
 		{.number=220,.ModbusAddress=220,.CANAddress=1111,.name={"Motor Back-EMF constant"},.shortName={"Mot EMF"},.description={"Motor back-emf in V/1000RPM"},.WriteAllowed=2,.precision=1,.unit="Kv",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.1f,.minValue=1.0f,.maxValue=650.0f,.defaultValue=29.0f},
 		{.number=221,.ModbusAddress=221,.CANAddress=1111,.name={"Motor inertia"},.shortName={"Mot Inr"},.description={"Motor inertia kgcm2 "},.WriteAllowed=2,.precision=2,.unit="kgc",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=0.05f,.maxValue=650.0f,.defaultValue=0.6f},
 
-		{.number=300,.ModbusAddress=300,.CANAddress=1111,.name={"Acceleration ramp"},.shortName={"Acc ramp"},.description={"Motor acceleration ramp s/1000RPM"},.WriteAllowed=1,.precision=2,.unit="s",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=0.0f,.maxValue=650.0f,.defaultValue=3.0f},
-		{.number=301,.ModbusAddress=301,.CANAddress=1111,.name={"Deceleration ramp"},.shortName={"Dec ramp"},.description={"Motor deceleration ramp s/1000RPM"},.WriteAllowed=1,.precision=2,.unit="s",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=0.0f,.maxValue=650.0f,.defaultValue=3.0f},
+		{.number=300,.ModbusAddress=300,.CANAddress=0x6083,.name={"Acceleration ramp"},.shortName={"Acc ramp"},.description={"Motor acceleration ramp s/1000RPM"},.WriteAllowed=1,.precision=2,.unit="s",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=0.0f,.maxValue=650.0f,.defaultValue=3.0f},
+		{.number=301,.ModbusAddress=301,.CANAddress=0x6084,.name={"Deceleration ramp"},.shortName={"Dec ramp"},.description={"Motor deceleration ramp s/1000RPM"},.WriteAllowed=1,.precision=2,.unit="s",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=0.0f,.maxValue=650.0f,.defaultValue=3.0f},
 		{.number=302,.ModbusAddress=302,.CANAddress=1111,.name={"Speed limit positive"},.shortName={"Spd lim+"},.description={"Speed limit in positive direction"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65000.0f,.defaultValue=4000.0f},
 		{.number=303,.ModbusAddress=303,.CANAddress=1111,.name={"Speed limit negative"},.shortName={"Spd lim-"},.description={"Speed limit in negative direction"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65000.0f,.defaultValue=4000.0f},
 
@@ -96,7 +96,7 @@ const parameter_t parameter_list[]={
 
 };
 
-const parameter_t monitor_list[]={ //parameters shown in monitor menu
+parameter_t monitor_list[]={ //parameters shown in monitor menu
 		{.number=1,.ModbusAddress=1,.CANAddress=1111,.name={"Actual speed"},.shortName={"Act spd"},.description={"Actual motor speed"},.WriteAllowed=0,.precision=0,.unit="RPM",.ModbusDataType=mbINT16,.type=pINT16,.multiplierMB=1.0f,.minValue=-10000.0f,.maxValue=10000.0f,.defaultValue=0.0f},
 		{.number=2,.ModbusAddress=2,.CANAddress=1111,.name={"Apparent current"},.shortName={"I mot"},.description={"Actual motor RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
 		{.number=3,.ModbusAddress=3,.CANAddress=1111,.name={"Magnetizing current"},.shortName={"I mag"},.description={"Magnetizing RMS current"},.WriteAllowed=0,.precision=2,.unit="A",.ModbusDataType=mbINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=-32000.0f,.maxValue=32000.0f,.defaultValue=0.0f},
