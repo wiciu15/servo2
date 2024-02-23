@@ -80,8 +80,8 @@ void Error_Handler(void);
 #define IGBT_FAULT_EXTI_IRQn EXTI1_IRQn
 #define DAC1_Pin GPIO_PIN_4
 #define DAC1_GPIO_Port GPIOA
-#define DAC2_Pin GPIO_PIN_5
-#define DAC2_GPIO_Port GPIOA
+#define OLED_CLK_Pin GPIO_PIN_5
+#define OLED_CLK_GPIO_Port GPIOA
 #define I_U_Pin GPIO_PIN_6
 #define I_U_GPIO_Port GPIOA
 #define I_V_Pin GPIO_PIN_7
@@ -141,8 +141,6 @@ void Error_Handler(void);
 #define MODBUS_RX_GPIO_Port GPIOD
 #define MODBUS_DE_Pin GPIO_PIN_7
 #define MODBUS_DE_GPIO_Port GPIOD
-#define OLED_CLK_Pin GPIO_PIN_3
-#define OLED_CLK_GPIO_Port GPIOB
 #define OLED_CS_Pin GPIO_PIN_4
 #define OLED_CS_GPIO_Port GPIOB
 #define OLED_MOSI_Pin GPIO_PIN_5

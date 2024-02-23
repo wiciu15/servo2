@@ -40,7 +40,7 @@ void draw(){
 	ssd1306_Fill(Black);
 	ssd1306_Line(0, 11, 127, 11, White);
 	char statusString [24];
-	switch(inverter.state){
+	/*switch(inverter.state){
 	//@TODO: differentiate display appearance for different inverter states
 	case operation_enabled:
 		if(inverter.control_mode>=1){sprintf(statusString,"RUN %+5.0fRPM %.1fA %.0fC",inverter.filtered_rotor_speed,inverter.I_RMS,inverter.IGBT_temp);}
@@ -67,7 +67,7 @@ void draw(){
 	default:
 		sprintf(statusString,"ERR %+5.0fRPM %3.0fV %.0fC",inverter.filtered_rotor_speed,inverter.DCbus_voltage,inverter.IGBT_temp);
 		break;
-	}
+	}*/
 	ssd1306_SetCursor(2	, 0);
 	ssd1306_WriteString(statusString, Font_6x8, 1);
 

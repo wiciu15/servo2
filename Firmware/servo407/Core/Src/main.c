@@ -41,7 +41,12 @@ typedef StaticTimer_t osStaticTimerDef_t;
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+/* Debug Exception and Monitor Control Register base address */
+#define DEMCR                 *((volatile uint32_t*) 0xE000EDFCu)
 
+/* ITM register addresses */
+#define ITM_STIMULUS_PORT0    *((volatile uint32_t*) 0xE0000000u)
+#define ITM_TRACE_EN          *((volatile uint32_t*) 0xE0000E00u)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -86,19 +91,19 @@ DMA_HandleTypeDef hdma_usart1_tx;
 osThreadId_t defaultTaskHandle;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .stack_size = 256 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
 /* Definitions for taskModbusUSB */
 osThreadId_t taskModbusUSBHandle;
 const osThreadAttr_t taskModbusUSB_attributes = {
   .name = "taskModbusUSB",
-  .stack_size = 600 * 4,
+  .stack_size = 1024 * 4,
   .priority = (osPriority_t) osPriorityNormal,
 };
 /* Definitions for uiTask */
 osThreadId_t uiTaskHandle;
-uint32_t uiTaskBuffer[ 512 ];
+uint32_t uiTaskBuffer[ 1024 ];
 osStaticThreadDef_t uiTaskControlBlock;
 const osThreadAttr_t uiTask_attributes = {
   .name = "uiTask",
@@ -110,7 +115,7 @@ const osThreadAttr_t uiTask_attributes = {
 };
 /* Definitions for canopen */
 osThreadId_t canopenHandle;
-uint32_t canopenBuffer[ 4096 ];
+uint32_t canopenBuffer[ 2048 ];
 osStaticThreadDef_t canopenControlBlock;
 const osThreadAttr_t canopen_attributes = {
   .name = "canopen",
@@ -199,7 +204,10 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  // Enable TRCENA
+  DEMCR |= ( 1 << 24);
+  // Enable stimulus port 0
+  ITM_TRACE_EN |= ( 1 << 0);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
@@ -523,13 +531,6 @@ static void MX_DAC_Init(void)
   sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
   if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** DAC channel OUT2 config
-  */
-  if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_2) != HAL_OK)
   {
     Error_Handler();
   }
@@ -1236,6 +1237,14 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+int _write(int file, char *ptr, int len)
+{
+    for (int DataIdx = 0; DataIdx < len; DataIdx++)
+        ITM_SendChar(*ptr++);
+
+    return len;
+}
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 	//HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin, 1);
