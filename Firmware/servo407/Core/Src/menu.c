@@ -9,6 +9,7 @@
 #include "menu.h"
 #include "ssd1306.h"
 #include <string.h>
+#include "printf.h"
 
 void (*key_back_func)(void) = &menu_back;
 void (*key_next_func)(void) = &menu_next;
@@ -235,7 +236,7 @@ void menu_jog_refresh(){
 		ssd1306_WriteString("JOG MENU", Font_7x10,0);
 		ssd1306_SetCursor(2, 32);
 		char  setpointString [24];
-		sprintf(setpointString,"Set speed: %.0fRPM",inverter.speed_setpoint);
+		snprintf(setpointString,24,"Set speed: %.0fRPM",inverter.speed_setpoint);
 		ssd1306_WriteString(setpointString, Font_6x8, 1);
 	}else{
 		ssd1306_SetCursor(11, 32);
@@ -303,25 +304,25 @@ void menu_monitor_refresh(){
 		case pFLOAT:{
 			float value;
 			memcpy(&value,&rawvalue,4); //switch from 32bit data to float
-			sprintf(stringbuf,"%6.*f%s",(int)monitor_list[i].precision,value,monitor_list[i].unit);
+			snprintf(stringbuf,29,"%6.*f%s",(int)monitor_list[i].precision,value,monitor_list[i].unit);
 			break;
 		}
 		case pINT16:{
 			int16_t value;
 			memcpy(&value,&rawvalue,2); //switch from 32bit raw data to int16
-			sprintf(stringbuf,"%6.1i%s",value,monitor_list[i].unit);
+			snprintf(stringbuf,29,"%6.1i%s",value,monitor_list[i].unit);
 			break;
 		}
 		case pUINT16:{
 			uint16_t value;
 			memcpy(&value,&rawvalue,2); //switch from 32bit raw data to int16
-			sprintf(stringbuf,"%6.1u%s",value,monitor_list[i].unit);
+			snprintf(stringbuf,29,"%6.1u%s",value,monitor_list[i].unit);
 			break;
 		}
 		case pBOOL16:{
 			uint16_t value;
 			memcpy(&value,&rawvalue,2); //switch from 32bit raw data to int16
-			sprintf(stringbuf,"%#X%s",value,monitor_list[i].unit);
+			snprintf(stringbuf,29,"%#X%s",value,monitor_list[i].unit);
 			break;
 		}
 		}

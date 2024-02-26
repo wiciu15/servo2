@@ -27,16 +27,16 @@
 #include "CO_app_STM32.h"
 #include "CANopen.h"
 #include "main.h"
-#include <stdio.h>
 
 #include "CO_storageBlank.h"
 #include "OD.h"
 #include "inverter.h"
+#include "printf.h"
 CANopenNodeSTM32*
     canopenNodeSTM32; // It will be set by canopen_app_init and will be used across app to get access to CANOpen objects
 
 /* Printf function of CanOpen app */
-#define log_printf(macropar_message, ...) printf(macropar_message, ##__VA_ARGS__)
+#define log_printf(macropar_message, ...) printf_(macropar_message, ##__VA_ARGS__)
 
 /* default values for CO_CANopenInit() */
 #define NMT_CONTROL                                                                                                    \
@@ -193,7 +193,6 @@ canopen_app_resetCommunication() {
     CO_CANsetNormalMode(CO->CANmodule);
 
     log_printf("CANopenNode - Running...\n");
-    fflush(stdout);
     time_old = time_current = HAL_GetTick();
     return 0;
 }

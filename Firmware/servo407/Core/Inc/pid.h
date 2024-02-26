@@ -22,6 +22,6 @@ typedef struct PID_t {
 } PID_t;
 
 
-float PI_control(PID_t *pid_data, float error);
+float PI_control(volatile PID_t *pid_data, float error);
 
 #endif /* INC_PID_H_ */

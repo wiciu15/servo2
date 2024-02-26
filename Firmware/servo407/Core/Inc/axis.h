@@ -14,11 +14,15 @@ typedef struct _axis_t{
 	int32_t axis_position_change_raw; //value holding change in position that has not been recalculated to user unit and updated in axis position
 	int64_t actual_position_raw;
 	float actual_position;
-	int32_t target_position;
+	int32_t target_position; //controlword acknowledged and calculated target position
+	uint8_t next_target_buffered; //is value in variable next_target_position a new target setpoint?
+	int32_t next_target_position; //variable to hold target position to use after actual positioning move is completed and move immediately bit is 0
+	uint8_t target_position_acknowledged;
+	uint8_t target_position_reached;
+	int32_t temp_target_position; //target position held in communication/parameter set register
 	int32_t last_step_pulses;
 	int32_t target_position_from_tg;//target position after applying target generator ramps to it
 	float error_position;
-	int32_t next_target_position;
 	float max_tg_increment_positive;
 	float max_tg_increment_negative;
 	float tg_increment;

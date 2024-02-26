@@ -1238,12 +1238,9 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-int _write(int file, char *ptr, int len)
+void _putchar(char character)
 {
-    for (int DataIdx = 0; DataIdx < len; DataIdx++)
-        ITM_SendChar(*ptr++);
-
-    return len;
+        ITM_SendChar(character);
 }
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){

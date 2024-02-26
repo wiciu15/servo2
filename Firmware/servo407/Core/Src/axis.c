@@ -30,7 +30,7 @@ void axis_update_controller_data(){
 	if(parameter_set.position_factor_numerator==0){parameter_set.position_factor_numerator=1;}
 	axis.unit_factor=(float)parameter_set.position_factor_numerator/(float)parameter_set.position_factor_denominator;
 	axis.max_tg_increment_positive=((parameter_set.speed_limit_positive*axis.unit_factor)/(inverter.control_loop_freq/10.0f))*1092.25f; //max_rpm*unit_factor*(65535/(60s*ctrl_loop_freq/10))
-	axis.max_tg_increment_negative= ((parameter_set.speed_limit_negative*axis.unit_factor)/(inverter.control_loop_freq/10.0f))*1092.25f;
+	axis.max_tg_increment_negative= ((parameter_set.speed_limit_positive*axis.unit_factor)/(inverter.control_loop_freq/10.0f))*1092.25f;
 
 	axis.position_controller_data.antiwindup_limit=fmaxf(parameter_set.speed_limit_positive,parameter_set.speed_limit_negative)+200.0f;
 	axis.position_controller_data.output_limit=fmaxf(parameter_set.speed_limit_positive,parameter_set.speed_limit_negative)+200.0f;
@@ -101,9 +101,17 @@ int32_t axis_position_trajectory_generator(int32_t actual_demand_position,int32_
 	}
 
 	if(error>axis.tg_accel || error < -axis.tg_accel){
-			position_demand=actual_demand_position+axis.tg_increment;
+		position_demand=actual_demand_position+axis.tg_increment;
+		axis.target_position_reached=0;
 	}else{
 		position_demand = target_position;
+		if(axis.next_target_buffered==0){axis.target_position_reached=1;}
+		else{
+			axis.target_position_reached=0;
+			axis.target_position=axis.next_target_position;
+			axis.next_target_position=0;
+			axis.next_target_buffered=0;
+		}
 	}
 	return position_demand;
 }

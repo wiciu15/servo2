@@ -7,7 +7,7 @@
 
 #include "pid.h"
 
-float PI_control(PID_t  *pid_data, float error){
+float PI_control(volatile PID_t  *pid_data, float error){
 	float proportional = pid_data->proportional_gain * error;
 	float integral = pid_data->last_integral + (pid_data->integral_gain*pid_data->sampling_time*0.5f*(error+pid_data->last_error));
 	//antiwindup

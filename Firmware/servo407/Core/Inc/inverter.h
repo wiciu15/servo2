@@ -167,7 +167,7 @@ PID_t iq_current_controller_data;
 PID_t speed_controller_data;
 }inverter_t;
 
-extern inverter_t inverter;
+extern volatile inverter_t inverter;
 extern parameter_set_t parameter_set;
 const extern inverter_error_object_t inverter_error_object[];
 extern inverter_error_history_t inverter_error_history;
@@ -184,12 +184,12 @@ void update_constant_values(void);
 HAL_StatusTypeDef HOT_ADC_read(void);
 void HOT_ADC_RX_Cplt(void);
 void HOT_ADC_calculate_avg(void);
-void clarke_transform(float I_U,float I_V,float * I_alpha,float * I_beta);
-void park_transform(float I_alpha,float I_beta,float angle,float * I_d,float * I_q);
-void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float * U_beta);
-float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_value);
-float LowPassFilterA(float Tf,float Ts,float actual_measurement, float * last_filtered_value);
-float ramp_generator(ramp_generator_t * ramp_generator_data,float input);
+void clarke_transform(float I_U,float I_V,volatile float * I_alpha,volatile float * I_beta);
+void park_transform(float I_alpha,float I_beta,float angle,volatile float * I_d,volatile float * I_q);
+void inv_park_transform(float U_d,float U_q, float angle, volatile float * U_alpha, volatile float * U_beta);
+float LowPassFilter(float Tf,float actual_measurement, volatile float * last_filtered_value);
+float LowPassFilterA(float Tf,float Ts,float actual_measurement, volatile float * last_filtered_value);
+float ramp_generator(volatile ramp_generator_t * ramp_generator_data,float input);
 
 void output_sine_pwm(output_voltage_vector_t voltage_vector);
 void output_svpwm(output_voltage_vector_t voltage_vector);

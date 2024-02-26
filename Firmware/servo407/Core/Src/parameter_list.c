@@ -81,7 +81,7 @@ parameter_t parameter_list[]={
 
 		{.number=300,.ModbusAddress=300,.CANAddress=0x6083,.name={"Acceleration ramp"},.shortName={"Acc ramp"},.description={"Motor acceleration ramp s/1000RPM"},.WriteAllowed=1,.precision=2,.unit="s",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=0.0f,.maxValue=650.0f,.defaultValue=3.0f},
 		{.number=301,.ModbusAddress=301,.CANAddress=0x6084,.name={"Deceleration ramp"},.shortName={"Dec ramp"},.description={"Motor deceleration ramp s/1000RPM"},.WriteAllowed=1,.precision=2,.unit="s",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.01f,.minValue=0.0f,.maxValue=650.0f,.defaultValue=3.0f},
-		{.number=302,.ModbusAddress=302,.CANAddress=1111,.name={"Speed limit positive"},.shortName={"Spd lim+"},.description={"Speed limit in positive direction"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65000.0f,.defaultValue=4000.0f},
+		{.number=302,.ModbusAddress=302,.CANAddress=0x6081,.name={"Speed limit positive"},.shortName={"Spd lim+"},.description={"Speed limit in positive direction"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65000.0f,.defaultValue=4000.0f},
 		{.number=303,.ModbusAddress=303,.CANAddress=1111,.name={"Speed limit negative"},.shortName={"Spd lim-"},.description={"Speed limit in negative direction"},.WriteAllowed=1,.precision=0,.unit="RPM",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=1.0f,.minValue=0.0f,.maxValue=65000.0f,.defaultValue=4000.0f},
 
 		{.number=310,.ModbusAddress=310,.CANAddress=1111,.name={"Position loop P gain"},.shortName={"Pos p"},.description={"Proportional gain of positioning loop"},.WriteAllowed=1,.precision=3,.unit="",.ModbusDataType=mbUINT16,.type=pFLOAT,.multiplierMB=0.001f,.minValue=0.0f,.maxValue=6500.0f,.defaultValue=2.0f},
@@ -158,8 +158,8 @@ HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue
 	case 5:{float value=(inverter.I_q_filtered/parameter_set.motor_nominal_current)*100.0f;memcpy(ptrToReturnValue,&value,4);break;}
 	case 6:{int16_t value = (int16_t)((int32_t)axis.actual_position & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;} //split int32 to int16
 	case 7:{int16_t value = (int16_t)(((int32_t)axis.actual_position>>16) & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
-	case 8:{int16_t value = (int16_t)(axis.target_position & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
-	case 9:{int16_t value = (int16_t)((axis.target_position>>16) & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
+	case 8:{int16_t value = (int16_t)(axis.temp_target_position & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
+	case 9:{int16_t value = (int16_t)((axis.temp_target_position>>16) & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
 	case 10:{float value=(inverter.output_voltage/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
 	case 11:{float value=(inverter.DCbus_voltage);memcpy(ptrToReturnValue,&value,4);break;}
 
@@ -178,6 +178,10 @@ HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue
 		//@TODO: implement target reached bit for other modes
 		if(inverter.control_mode==foc_speed){
 			if(inverter.speed_setpoint-inverter.filtered_rotor_speed>=(inverter.speed_setpoint*0.2f) || inverter.speed_setpoint-inverter.filtered_rotor_speed<=(inverter.speed_setpoint*-0.2f)){bitclear(value,10);}else{bitset(value,10);}
+		}
+		if(inverter.control_mode==foc_position_profile){
+			if(axis.target_position_reached)bitset(value,10);
+			if(axis.target_position_acknowledged)bitset(value,12);
 		}
 		//@TODO:internal limit active bit
 		//@TODO:operation specific bits in statusword
@@ -262,15 +266,17 @@ HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 		case 8:{
 			int16_t value=0;
 			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
-			axis.target_position=axis.target_position & 0xFFFF0000; //clear lower 16bit
-			axis.target_position=axis.target_position | ((int32_t)value & 0x0000FFFF);
+			axis.temp_target_position=axis.temp_target_position & 0xFFFF0000; //clear lower 16bit
+			axis.temp_target_position=axis.temp_target_position | ((int32_t)value & 0x0000FFFF);
+			axis.target_position_acknowledged=0;
 			break;
 		}
 		case 9:{
 			int16_t value=0;
 			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
-			axis.target_position=axis.target_position & 0x0000FFFF; //clear lower 16bit
-			axis.target_position=axis.target_position | ((((int32_t)value)<<16) & 0xFFFF0000);
+			axis.temp_target_position=axis.temp_target_position & 0x0000FFFF; //clear higher 16bit
+			axis.temp_target_position=axis.temp_target_position | ((((int32_t)value)<<16) & 0xFFFF0000);
+			axis.target_position_acknowledged=0;
 			break;
 		}
 		case 31:{ //control register
@@ -296,11 +302,33 @@ HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 			if(bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0)&& (inverter.state==switched_on||inverter.state==quickstop_active)){ //transition 4
 				inverter_enable();
 			}
-			if(!bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0) && inverter.state == operation_enabled){
+			if(!bitcheck(value,3) && bitcheck(value,2)&& bitcheck(value,1) && bitcheck(value,0) && inverter.state == operation_enabled){ //stop operation mode
 				inverter_disable();inverter.state=switched_on;
 			}
-			if(bitcheck(value,7) && inverter.state==faulted){
+			if(bitcheck(value,7) && inverter.state==faulted){ //error reset
 				inverter_error_reset();
+			}
+			//profile position mode specific bits
+			if(inverter.control_mode==foc_position_profile){
+				if(bitcheck(value,4)){ //acknlowledge new target position
+					axis.target_position_acknowledged=1;
+					if(bitcheck(value,5)){ //change set immediately
+						axis.next_target_buffered=0;
+						if(bitcheck(value,6)){
+							axis.target_position+=axis.temp_target_position;
+						}else{
+							axis.target_position=axis.temp_target_position;
+						}
+					}
+					else{
+						axis.next_target_buffered=1;
+						if(bitcheck(value,6)){
+							axis.next_target_position+=axis.temp_target_position;
+						}else{
+							axis.next_target_position=axis.temp_target_position;
+						}
+					}
+				}
 			}
 			break;
 		}

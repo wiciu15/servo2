@@ -90,12 +90,45 @@ ODR_t OD_6071_write(OD_stream_t *stream, const void *buf, OD_size_t count, OD_si
 	if(index==0xFFFF)return ODR_IDX_NOT_EXIST;
 	float trgtTorque = (float)OD_RAM.x6071_targetTorque/10.0f;
 	uint32_t data=0;
-	memcpy(&data,&trgtTorque,2);
+	memcpy(&data,&trgtTorque,4);
 	if(parameter_write(&parameter_list[index], &data)!=HAL_OK){
 		return ODR_UNSUPP_ACCESS;
 	}
 	return ODR_OK;
 }
+
+ODR_t OD_607A_read(OD_stream_t *stream, void *buf, OD_size_t count, OD_size_t *countRead){
+	OD_RAM.x607A_targetPosition=axis.temp_target_position;
+	return OD_readOriginal(stream, buf, count, countRead);
+}
+
+ODR_t OD_607A_write(OD_stream_t *stream, const void *buf, OD_size_t count, OD_size_t *countWritten){
+	ODR_t status = OD_writeOriginal(stream, buf, count, countWritten);
+	if(status == ODR_OK){
+		axis.temp_target_position = OD_RAM.x607A_targetPosition;
+		axis.target_position_acknowledged=0;
+	}
+	return status;
+}
+
+ODR_t OD_6081_read(OD_stream_t *stream, void *buf, OD_size_t count, OD_size_t *countRead){
+	OD_RAM.x6081_profileVelocity = (parameter_set.speed_limit_positive*axis.unit_factor*65535.0f)/60;
+	return OD_readOriginal(stream, buf, count, countRead);
+}
+
+ODR_t OD_6081_write(OD_stream_t *stream, const void *buf, OD_size_t count, OD_size_t *countWritten){
+	OD_writeOriginal(stream, buf, count, countWritten);
+		uint8_t index=par_get_index_CAN(0x6081);
+		if(index==0xFFFF)return ODR_IDX_NOT_EXIST;
+		float speedLimit = ((float)OD_RAM.x6081_profileVelocity*60)/(axis.unit_factor*65535);
+		uint32_t data=0;
+		memcpy(&data,&speedLimit,4);
+		if(parameter_write(&parameter_list[index], &data)!=HAL_OK){
+			return ODR_UNSUPP_ACCESS;
+		}
+		return ODR_OK;
+}
+
 
 ODR_t OD_6083_read(OD_stream_t *stream, void *buf, OD_size_t count, OD_size_t *countRead){
 	OD_RAM.x6083_profileAcceleration=1000.0f/parameter_set.acceleration_ramp_s;
@@ -108,7 +141,7 @@ ODR_t OD_6083_write(OD_stream_t *stream, const void *buf, OD_size_t count, OD_si
 	if(index==0xFFFF)return ODR_IDX_NOT_EXIST;
 	float accRamp = 1000.0f/(float)OD_RAM.x6083_profileAcceleration;
 	uint32_t data=0;
-	memcpy(&data,&accRamp,2);
+	memcpy(&data,&accRamp,4);
 	if(parameter_write(&parameter_list[index], &data)!=HAL_OK){
 		return ODR_UNSUPP_ACCESS;
 	}
@@ -126,7 +159,7 @@ ODR_t OD_6084_write(OD_stream_t *stream, const void *buf, OD_size_t count, OD_si
 	if(index==0xFFFF)return ODR_IDX_NOT_EXIST;
 	float decRamp = 1000.0f/(float)OD_RAM.x6084_profileDeceleration;
 	uint32_t data=0;
-	memcpy(&data,&decRamp,2);
+	memcpy(&data,&decRamp,4);
 	if(parameter_write(&parameter_list[index], &data)!=HAL_OK){
 		return ODR_UNSUPP_ACCESS;
 	}
@@ -160,6 +193,8 @@ OD_extension_t OD_6061_extension={.object = NULL, .read = OD_6061_read, .write =
 OD_extension_t OD_6064_extension={.object = NULL, .read = OD_6064_read, .write = NULL};
 OD_extension_t OD_606C_extension={.object = NULL, .read = OD_606C_read, .write = NULL};
 OD_extension_t OD_6071_extension={.object = NULL, .read = OD_6071_read, .write = OD_6071_write};
+OD_extension_t OD_607A_extension={.object = NULL, .read = OD_607A_read, .write = OD_607A_write};
+OD_extension_t OD_6081_extension={.object = NULL, .read = OD_6081_read, .write = OD_6081_write};
 OD_extension_t OD_6083_extension={.object = NULL, .read = OD_6083_read, .write = OD_6083_write};
 OD_extension_t OD_6084_extension={.object = NULL, .read = OD_6084_read, .write = OD_6084_write};
 OD_extension_t OD_60FF_extension={.object = NULL, .read = OD_60FF_read, .write = OD_60FF_write};
@@ -173,6 +208,8 @@ ODR_t initialize_OD_extensions(){
 	OD_extension_init(OD_ENTRY_H6064_positionActualValue, &OD_6064_extension);
 	OD_extension_init(OD_ENTRY_H606C,&OD_606C_extension);
 	OD_extension_init(OD_ENTRY_H6071_targetTorque,&OD_6071_extension);
+	OD_extension_init(OD_ENTRY_H607A, &OD_607A_extension);
+	OD_extension_init(OD_ENTRY_H6081, &OD_6081_extension);
 	OD_extension_init(OD_ENTRY_H6083, &OD_6083_extension);
 	OD_extension_init(OD_ENTRY_H6084, &OD_6084_extension);
 	OD_extension_init(OD_ENTRY_H60FF,&OD_60FF_extension);

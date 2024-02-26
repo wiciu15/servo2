@@ -67,7 +67,7 @@ parameter_set_t parameter_set={
 		.position_controller_integral_gain=0.0f
 };
 
-inverter_t inverter={
+volatile inverter_t inverter={
 		.constant_values_update_needed=1, //force recalculation on first enable
 		.control_loop_freq=DEFAULT_CTRL_LOOP_FREQ,
 		.error=no_error,
@@ -405,11 +405,11 @@ void HOT_ADC_calculate_avg(){
 	inverter.HOT_ADC.IGBTtemp_sum=0;
 }
 
-void clarke_transform(float I_U,float I_V,float * I_alpha,float * I_beta){
+void clarke_transform(float I_U,float I_V,volatile float * I_alpha,volatile float * I_beta){
 	* I_alpha=I_U;
 	* I_beta=(0.5773502f * I_U) + (1.1547005f * I_V);
 }
-void park_transform(float I_alpha,float I_beta,float angle,float * I_d,float * I_q){
+void park_transform(float I_alpha,float I_beta,float angle,volatile float * I_d,volatile float * I_q){
 	float pSinVal,pCosVal;
 	pSinVal = arm_sin_f32(angle);
 	pCosVal = arm_cos_f32(angle);
@@ -418,7 +418,7 @@ void park_transform(float I_alpha,float I_beta,float angle,float * I_d,float * I
 }
 
 
-void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float * U_beta){
+void inv_park_transform(float U_d,float U_q, float angle, volatile float * U_alpha, volatile float * U_beta){
 	float pSinVal,pCosVal;
 	pSinVal = arm_sin_f32(angle);
 	pCosVal = arm_cos_f32(angle);
@@ -427,7 +427,7 @@ void inv_park_transform(float U_d,float U_q, float angle, float * U_alpha, float
 }
 
 //Tf - filter time constant in seconds
-float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_value){
+float LowPassFilter(float Tf,float actual_measurement, volatile float * last_filtered_value){
 	float alpha = Tf/(Tf + (1.0f/inverter.control_loop_freq)); //works if called synchronously with motor control loop
 	float filtered_value = (alpha*(*last_filtered_value)) + ((1.0f - alpha)*actual_measurement);
 	*last_filtered_value = filtered_value;
@@ -435,14 +435,14 @@ float LowPassFilter(float Tf,float actual_measurement, float * last_filtered_val
 }
 
 //Tf - filter time constant in seconds, Ts - sampling interval
-float LowPassFilterA(float Tf,float Ts,float actual_measurement, float * last_filtered_value){
+float LowPassFilterA(float Tf,float Ts,float actual_measurement, volatile float * last_filtered_value){
 	float alpha = Tf/(Tf + Ts);
 	float filtered_value = (alpha*(*last_filtered_value)) + ((1.0f - alpha)*actual_measurement);
 	*last_filtered_value = filtered_value;
 	return filtered_value;
 }
 
-float ramp_generator(ramp_generator_t * ramp_generator_data,float input){
+float ramp_generator(volatile ramp_generator_t * ramp_generator_data,float input){
 	float output=ramp_generator_data->previous_output;
 	if(fabsf(output-input)>=0.001){ //input changed
 		if(ramp_generator_data->ramp_type==linear_ramp){
