@@ -18,38 +18,40 @@ or indirectly by this software/hardware. The board is mains-powered. High voltag
 
 ## Features
 
-- Manual output voltage and frequency control
+- Manual voltage and frequency control
 - U/f scalar motor control
-- Open loop current control
-- Field-oriented vector control (FOC) with encoder feedback for PMSM motors
+- Open loop current control for test purposes
+- Field-oriented vector control (FOC) for PMSM/BLDC motors with encoder feedback
 - Encoders support:
   -  ABZ encoder with differential driver output, needs one manual rotation to index with a rotor properly
-  -  Mitsubishi J2/J2s series, baud rate 2 500 000 bits/s
-  -  Tamagawa T-Format encoders - tested with ABB BSM-series motor, baud rate 2 500 000 bits/s
-  -  Panasonic minas series encoder - basic absolute position readout, support in early development
-  -  DELTA NH4 series T+ T- encoder - very early development, not tested yet
+  -  Mitsubishi J2/J2s/J4/JE series, baud rate 2 500 000 bits/s, implementation is working but need some polish
+  -  Tamagawa T-Format encoders - tested with ABB BSM-series motor, baud rate 2 500 000 bits/s, most robust implementation and testing at this moment
+  -  Panasonic minas series encoder - support in early development, not much tested and buggy
+  -  DELTA NH4 series T+ T- encoder - very early development
 - Braking chopper control
 - under/overvoltage, overcurrent, short-circuit and other errors detection and handling
 - Communication with PC using MODBUS over USB-CDC
+- simple CANopen node for fieldbus control
 - Parameter set, with non-volatile storage in external EEPROM
-- OLED screen with basic user interface
+- control and monitoring of drive using OLED screen and buttons
+- ramp generators and limiters for current,speed and position control loops
 
 ## To-do in the future
 
-- ramp generators and limiters for control loops
-- position loop
-- I2t monitoring of motor
+- I2t thermal monitoring of motor
 - sensorless rotor angle aquisition
-- fieldbus control (MODBUS RS485, CANopen)
 - analog and digital I/O
-- parametrization, actions and control using OLED screen and buttons
+- step/dir input
+- current and speed loop gains auto-tuning
+- motor parameters automatic measurement
 
 ## Used third-party software
 - I2C EEPROM driver by ControllersTech
 - OLED driver https://github.com/afiskon/stm32-ssd1306
 - stModbus https://github.com/wiciu15/stModbus/
+- CANopenNode https://github.com/CANopenNode/CANopenNode
+- embedded printf implementation https://github.com/mpaland/printf
 - FreeRTOS
-- STM32 HAL libraries
 
 
 
