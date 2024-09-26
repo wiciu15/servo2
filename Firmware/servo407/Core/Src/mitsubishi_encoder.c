@@ -48,7 +48,7 @@ void mitsubishi_motor_identification(void){
 	}else{
 		if(mitsubishi_encoder_data.motor_data_response_packet[0]==0x7A ){
 			//if response is valid decode motor data and encoder resolution
-			if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3D){mitsubishi_encoder_data.encoder_resolution=8192;set_ctrl_loop_frequency(5000);mitsubishi_encoder_data.motor_family=j2_13bit;} //j2 encoder
+			if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3D){mitsubishi_encoder_data.encoder_resolution=8192;set_ctrl_loop_frequency(2000);mitsubishi_encoder_data.motor_family=j2_13bit;} //j2 encoder
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3C){mitsubishi_encoder_data.encoder_resolution=16384;mitsubishi_encoder_data.motor_family=j2_14bit;} //j2 encoder
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x41){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=j2super;} //j2super 17 bit encoders
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x4B){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=je;} //mr-je/mr-e encoder 17bit
@@ -127,7 +127,7 @@ void mitsubishi_encoder_process_data(void){
 }
 
 void mitsubishi_encoder_send_command(void){
-	if(HAL_UART_Receive_DMA(&huart1, mitsubishi_encoder_data.motor_response, 9)!=HAL_OK){
+	if(HAL_UART_Receive_DMA(&huart1, (uint8_t*)&mitsubishi_encoder_data.motor_response, 9)!=HAL_OK){
 		mitsubishi_encoder_data.communication_error_count++;
 		if(mitsubishi_encoder_data.communication_error_count>5){mitsubishi_encoder_data.encoder_state=encoder_error_no_communication;memset(&mitsubishi_encoder_data,0,sizeof(mitsubishi_encoder_data_t));inverter_error_trip(encoder_error_communication);}
 	}
