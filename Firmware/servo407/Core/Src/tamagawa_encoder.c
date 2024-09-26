@@ -32,10 +32,11 @@ tamagawa_encoder_data_t tamagawa_encoder_data={
 
 void tamagawa_encoder_request_position(void){
 	if(USART_fast_transmit_RS485(&huart1, tamagawa_encoder_data.encoder_command)!=HAL_OK){inverter_error_trip(internal_software);}
-		if(HAL_UART_Receive_DMA(&huart1, tamagawa_encoder_data.motor_data_response_packet, 11)!=HAL_OK){//start listening for response, it will be automatically copied by DMA after reception
-			tamagawa_encoder_data.communication_error_count++;
-			if(tamagawa_encoder_data.communication_error_count>10){inverter_error_trip(encoder_error_communication);}
-		}else{tamagawa_encoder_data.communication_error_count=0;}
+	if(HAL_UART_Receive_DMA(&huart1,(uint8_t*)&tamagawa_encoder_data.motor_data_response_packet, 11)!=HAL_OK){//start listening for response, it will be automatically copied by DMA after reception
+		tamagawa_encoder_data.communication_error_count++;
+		if(tamagawa_encoder_data.communication_error_count>10){inverter_error_trip(encoder_error_communication);}
+	}else{tamagawa_encoder_data.communication_error_count=0;}
+
 }
 void tamagawa_encoder_process_position(void){
 	uint8_t xor_cheksum=0;
@@ -44,7 +45,7 @@ void tamagawa_encoder_process_position(void){
 	}
 	if(xor_cheksum!=tamagawa_encoder_data.motor_data_response_packet[10]){
 		tamagawa_encoder_data.checksum_error_count++;
-		if(tamagawa_encoder_data.checksum_error_count>10){inverter_error_trip(encoder_error_communication);}
+		if(tamagawa_encoder_data.checksum_error_count>10){inverter_error_trip(encoder_error_communication);tamagawa_encoder_data.checksum_error_count=0;}
 	}
 	else{ //calculate position and speed from received earlier data
 		//tamagawa_encoder_data.encoder_state=encoder_ok;
@@ -59,7 +60,7 @@ void tamagawa_encoder_process_position(void){
 		//mechanical encoder defect detection not tested
 		if(((tamagawa_encoder_data.speed>2000) && (tamagawa_encoder_data.speed<129000))|| ((tamagawa_encoder_data.speed<(-2000)) && (tamagawa_encoder_data.speed>(-129000)))){
 			tamagawa_encoder_data.excessive_acceleration_error_count++;
-			if(tamagawa_encoder_data.excessive_acceleration_error_count>2){tamagawa_encoder_data.encoder_state=encoder_error_acceleration;}
+			if(tamagawa_encoder_data.excessive_acceleration_error_count>3){tamagawa_encoder_data.encoder_state=encoder_error_acceleration;}
 		}
 	}
 }
@@ -151,11 +152,13 @@ void tamagawa_encoder_motor_identification(){
 	tamagawa_encoder_read_id();
 	for(uint8_t i=0;i<80;i++){
 		uint8_t received_data=0;
-		if(tamagawa_encoder_read_eeprom(i,&received_data)!=HAL_OK){i--;if(tamagawa_encoder_data.communication_error_count + tamagawa_encoder_data.checksum_error_count>9 ){break;}}else{
+		if(tamagawa_encoder_read_eeprom(i,&received_data)!=HAL_OK){i--;if(tamagawa_encoder_data.communication_error_count + tamagawa_encoder_data.checksum_error_count>29 ){break;}}else{
 			tamagawa_encoder_data.motor_eeprom[i]=received_data;}
 	}
-	if(tamagawa_encoder_data.communication_error_count + tamagawa_encoder_data.checksum_error_count>9){inverter_error_trip(encoder_error_communication);}else{
+	if(tamagawa_encoder_data.communication_error_count + tamagawa_encoder_data.checksum_error_count>29){inverter_error_trip(encoder_error_communication);}else{
 	tamagawa_encoder_data.encoder_state=encoder_ok;
+	tamagawa_encoder_data.checksum_error_count=0;
+	tamagawa_encoder_data.communication_error_count=0;
 	//if(inverter.error==encoder_error_communication){inverter.error=no_error;} //used if hotplug is allowed
 	tamagawa_encoder_data.encoder_command=0x1A;}
 }
