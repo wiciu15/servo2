@@ -21,6 +21,7 @@ extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim5;
 extern ADC_HandleTypeDef hadc2;
 extern SPI_HandleTypeDef hspi2;
+extern DAC_HandleTypeDef hdac;
 
 extern osTimerId_t timerSoftstartHandle;
 
@@ -222,6 +223,7 @@ void inverter_setup(void){
 	HAL_TIM_Base_Start_IT(&htim5); //start main motor control loop
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); //start braking chopper
 	HAL_TIM_Base_Start(&htim4);TIM4->CNT=32768; //start STEP input timer/counter
+	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
 	inverter.state=switch_on_disabled;
 
 }
@@ -254,6 +256,7 @@ void inverter_enable(){
 		HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_3);
 		HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
 		inverter.state=operation_enabled;
+		HAL_GPIO_WritePin(ETH_RESET_GPIO_Port, ETH_RESET_Pin,1);
 		//@TODO: catch rotor on the fly is not always working, propably Iq current controller output needs to be pre-set with predicted back-emf at actual speed
 		if(inverter.control_mode==foc_speed){
 			inverter.speed_ramp_generator_data.previous_output = inverter.filtered_rotor_speed;
@@ -302,6 +305,7 @@ void inverter_disable(){
 	inverter.torque_current_setpoint=0.0f;
 	inverter.field_current_setpoint=0.0f;
 	}
+	HAL_GPIO_WritePin(ETH_RESET_GPIO_Port, ETH_RESET_Pin,0);
 	//HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);
 }
 
@@ -868,6 +872,8 @@ void motor_control_loop(void){
 		mitsubishi_encoder_send_command();
 	}
 
+	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint32_t)(((inverter.I_q+10.0f)/20.0f)*4096.0f));
+	//HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, inverter.encoder_raw_position);
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 }

@@ -1265,9 +1265,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
 		inverter.I_V=LowPassFilterA(0.0001f, 0.0000125f,-((float)avg_V_samples/5.0f-inverter.zerocurrent_ADC_samples_V)/ADC_SAMPLES_PER_AMP,&inverter.I_V);
 		inverter.I_W=-inverter.I_U-inverter.I_V;
 		//motor ovecurrent trip
-		if(inverter.I_U>parameter_set.motor_max_current+0.7f || inverter.I_U<(-parameter_set.motor_max_current-0.7f)){inverter_error_trip(motor_overcurrent);}
-		if(inverter.I_V>parameter_set.motor_max_current+0.7f || inverter.I_V<(-parameter_set.motor_max_current-0.7f)){inverter_error_trip(motor_overcurrent);}
-		if(inverter.I_W>parameter_set.motor_max_current+0.7f || inverter.I_W<(-parameter_set.motor_max_current-0.7f)){inverter_error_trip(motor_overcurrent);}
+		float currentlimit=parameter_set.motor_max_current*1.5f;
+		if(inverter.I_U>currentlimit || inverter.I_U<(-currentlimit)){inverter_error_trip(motor_overcurrent);}
+		if(inverter.I_V>currentlimit || inverter.I_V<(-currentlimit)){inverter_error_trip(motor_overcurrent);}
+		if(inverter.I_W>currentlimit || inverter.I_W<(-currentlimit)){inverter_error_trip(motor_overcurrent);}
 		//inverter overcurrent trip if motor limit higher than inverter limit
 		if(inverter.I_U>INVERTER_OVERCURRENT_TRIP_LEVEL || inverter.I_U<(-INVERTER_OVERCURRENT_TRIP_LEVEL)){inverter_error_trip(inverter_overcurrent);}
 		if(inverter.I_V>INVERTER_OVERCURRENT_TRIP_LEVEL || inverter.I_V<(-INVERTER_OVERCURRENT_TRIP_LEVEL)){inverter_error_trip(inverter_overcurrent);}
@@ -1460,7 +1461,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   /* USER CODE BEGIN Callback 1 */
   if(htim->Instance == TIM6) {
 	  canopen_app_interrupt();
-	  HAL_GPIO_TogglePin(ETH_RESET_GPIO_Port, ETH_RESET_Pin);
   }
   /* USER CODE END Callback 1 */
 }

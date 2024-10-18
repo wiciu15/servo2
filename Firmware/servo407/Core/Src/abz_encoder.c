@@ -33,7 +33,9 @@ void abz_encoder_calculate_abs_position(void){
 			abz_encoder_data.encoder_position=parameter_set.encoder_resolution-abz_encoder_data.encoder_position;
 		}
 		//to get electric angle in radians calculate fraction of 1 electric revolution, then multiply by 2PI and apply correction from parameter set
-		inverter.rotor_electric_angle=(((float)(abz_encoder_data.encoder_position % (parameter_set.encoder_resolution/parameter_set.motor_pole_pairs))/(float)(parameter_set.encoder_resolution/parameter_set.motor_pole_pairs))*_2_PI)-parameter_set.encoder_electric_angle_correction;  //calculate rotor electric angle
+		inverter.rotor_electric_angle=(((float)(abz_encoder_data.encoder_position % (parameter_set.encoder_resolution/parameter_set.motor_pole_pairs))/(float)(parameter_set.encoder_resolution/parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;  //calculate rotor electric angle
+		if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
+		if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
 		inverter.encoder_raw_position=abz_encoder_data.encoder_position;
 		//@TODO:implement excessive acceleration detection to trip inverter on faulty encoder signal
 	}
