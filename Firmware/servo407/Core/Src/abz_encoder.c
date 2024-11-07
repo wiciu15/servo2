@@ -21,14 +21,21 @@ abz_encoder_data_t abz_encoder_data={
  * @retval null
  */
 void abz_encoder_update_counter_on_marker(void){
-	TIM3->CNT=parameter_set.encoder_resolution; //"align" actual postion in counter with marker
-	if(abz_encoder_data.encoder_state==abz_encoder_not_marked && htim3.ChannelState[0]==HAL_TIM_CHANNEL_STATE_BUSY){abz_encoder_data.encoder_state=abz_encoder_ok;}
+	if(abz_encoder_data.encoder_state!=abz_encoder_not_marked){
+		TIM3->CNT=0x7FFF; //"align" half of timers counter to marker signal
+	}
+	if(abz_encoder_data.encoder_state==abz_encoder_not_marked && htim3.ChannelState[0]==HAL_TIM_CHANNEL_STATE_BUSY){
+		abz_encoder_data.encoder_state=abz_encoder_ok;
+		TIM3->CNT=0x7FFF; //"align" half of timers counter to marker signal}
+	}
 }
 
 void abz_encoder_calculate_abs_position(void){
 	if(abz_encoder_data.encoder_state!=abz_encoder_not_marked){
-		abz_encoder_data.encoder_position=TIM3->CNT-parameter_set.encoder_resolution;
-		if(abz_encoder_data.encoder_position>parameter_set.encoder_resolution){abz_encoder_data.encoder_position+=parameter_set.encoder_resolution;}
+		int32_t difference=TIM3->CNT-0x7FFF;
+		if(difference<0){difference=parameter_set.encoder_resolution-(-difference);}
+		if(difference>parameter_set.encoder_resolution){difference=difference%parameter_set.encoder_resolution;}
+		abz_encoder_data.encoder_position=difference;
 		if(parameter_set.encoder_polarity){
 			abz_encoder_data.encoder_position=parameter_set.encoder_resolution-abz_encoder_data.encoder_position;
 		}

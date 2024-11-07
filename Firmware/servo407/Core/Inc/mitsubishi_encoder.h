@@ -12,7 +12,7 @@
 
 
 typedef enum  {encoder_eeprom_reading,encoder_error_no_communication, encoder_error_cheksum, encoder_error_acceleration,encoder_ok}encoder_state_t;
-typedef enum  {unknown_family,j2_13bit,j2_14bit,j2super,j3j4,je}motor_family_t;
+typedef enum  {unknown_family,j2_13bit,j2_14bit,j2super,j3j4,je,j5}motor_family_t;
 typedef struct _ssi_encoder_data_t {
 	encoder_state_t encoder_state;
 	uint32_t encoder_position;

@@ -53,6 +53,7 @@ void mitsubishi_motor_identification(void){
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x41){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=j2super;} //j2super 17 bit encoders
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x4B){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=je;} //mr-je/mr-e encoder 17bit
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x44){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=j3j4;} //j3 and j4 encoder have the same encoder id but j4 claims 22bit resolution, maybe different command is needed
+			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x8F){mitsubishi_encoder_data.encoder_resolution=67108864;mitsubishi_encoder_data.motor_family=j5;} //very limited support
 			else{mitsubishi_encoder_data.encoder_resolution=131072;mitsubishi_encoder_data.motor_family=unknown_family;}
 			mitsubishi_encoder_data.motor_series_id=mitsubishi_encoder_data.motor_data_response_packet[3];
 			//determine speed and power
@@ -60,7 +61,7 @@ void mitsubishi_motor_identification(void){
 			mitsubishi_encoder_data.motor_speed=(mitsubishi_encoder_data.motor_data_response_packet[4] & 0x0F)*1000;
 			//set command to send to encoder depending on its type
 			if(mitsubishi_encoder_data.encoder_resolution==8192){mitsubishi_encoder_data.encoder_command=0x1A;}//j2s series also gives position after this command but resolution is limited to 16-bit
-			else {mitsubishi_encoder_data.encoder_command=0x1A;}
+			else {mitsubishi_encoder_data.encoder_command=0xA2;}
 			//allow hotplug of the encoder
 			mitsubishi_encoder_data.encoder_state=encoder_ok;
 			if(inverter.error==encoder_error_communication){
@@ -89,13 +90,25 @@ void mitsubishi_encoder_process_data(void){
 	//else{ //calculate position and speed from received earlier data
 	if(mitsubishi_encoder_data.encoder_resolution==65535){
 		mitsubishi_encoder_data.last_encoder_position=mitsubishi_encoder_data.encoder_position;
-		if(mitsubishi_encoder_data.motor_response[0]==0x1A){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[2]>>4 | mitsubishi_encoder_data.motor_response[3]<<4 | mitsubishi_encoder_data.motor_response[4]<<12;}
+		if(mitsubishi_encoder_data.motor_response[0]==0xA2){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[2]>>4 | mitsubishi_encoder_data.motor_response[3]<<4 | mitsubishi_encoder_data.motor_response[4]<<12;}
 		//if(mitsubishi_encoder_data.encoder_position>65535){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
 		int32_t speed = mitsubishi_encoder_data.last_encoder_position-mitsubishi_encoder_data.encoder_position;
-		if(((speed>5000) && (speed<125000))||
-				((speed<(-5000)) && (speed>(-125000)))){
+		if(((speed>5000) && (speed<60000))||
+				((speed<(-5000)) && (speed>(-60000)))){
 			mitsubishi_encoder_data.excessive_acceleration_error_count++;
 			if(mitsubishi_encoder_data.excessive_acceleration_error_count>5){mitsubishi_encoder_data.encoder_state=encoder_error_acceleration;}
+		}
+	}
+	if(mitsubishi_encoder_data.encoder_resolution==67108864){
+		mitsubishi_encoder_data.last_encoder_position=mitsubishi_encoder_data.encoder_position;
+		if(mitsubishi_encoder_data.motor_response[0]==0xA2){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.motor_response[3]>>2 | mitsubishi_encoder_data.motor_response[4]<<6 | mitsubishi_encoder_data.motor_response[5]<<14;}
+		//if(mitsubishi_encoder_data.encoder_position>65535){mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}//error handling
+		int32_t speed = mitsubishi_encoder_data.last_encoder_position-mitsubishi_encoder_data.encoder_position;
+		if(((speed>5000) && (speed<60000))||
+				((speed<(-5000)) && (speed>(-60000)))){
+			mitsubishi_encoder_data.excessive_acceleration_error_count++;
+			if(mitsubishi_encoder_data.excessive_acceleration_error_count>15){mitsubishi_encoder_data.encoder_state=encoder_error_acceleration;mitsubishi_encoder_data.excessive_acceleration_error_count=0;}
+			else{mitsubishi_encoder_data.encoder_position=mitsubishi_encoder_data.last_encoder_position;}
 		}
 	}
 	if(mitsubishi_encoder_data.encoder_resolution==8192){
@@ -121,6 +134,11 @@ void mitsubishi_encoder_process_data(void){
 		if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
 		if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
 	}
+	if(mitsubishi_encoder_data.encoder_resolution==67108864){
+			inverter.rotor_electric_angle=(((fmodf(mitsubishi_encoder_data.encoder_position,65535.0f/(float)parameter_set.motor_pole_pairs))/(65535.0f/(float)parameter_set.motor_pole_pairs))*_2_PI)+parameter_set.encoder_electric_angle_correction;
+			if(inverter.rotor_electric_angle>=_2_PI){inverter.rotor_electric_angle-=_2_PI;}
+			if(inverter.rotor_electric_angle<0){inverter.rotor_electric_angle+=_2_PI;}
+		}
 	//}
 
 

@@ -293,6 +293,9 @@ void CAN1_RX1_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI9_5_IRQn 0 */
+	for(uint8_t i=0;i<10;i++){
+		__NOP(); //wait for around 60ns to check if gpio is still active
+	}
 	if(HAL_GPIO_ReadPin(ENC_Z_GPIO_Port, ENC_Z_Pin)==1){
 		abz_encoder_update_counter_on_marker();
 	}

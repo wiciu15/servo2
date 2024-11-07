@@ -140,11 +140,11 @@ volatile inverter_t inverter={
 		.speed_ramp_generator_data={
 				.ramp_type=linear_ramp,
 				.previous_output=0.0f,
-					.incr_per_second_positive=0.0f,
-					.incr_per_second_negative=0.0f,
-					.sampling_time=1.0f/(DEFAULT_CTRL_LOOP_FREQ/10),
-					.positive_limit=990.0f,
-					.negative_limit=-990.0f
+				.incr_per_second_positive=0.0f,
+				.incr_per_second_negative=0.0f,
+				.sampling_time=1.0f/(DEFAULT_CTRL_LOOP_FREQ/10),
+				.positive_limit=990.0f,
+				.negative_limit=-990.0f
 		},
 
 		.id_current_controller_data = {
@@ -239,9 +239,9 @@ void set_ctrl_loop_frequency(uint16_t frequency){
 	update_constant_values();
 }
 /**
-  * @brief  Enable PWM output of the inverter
-  * @retval null
-  */
+ * @brief  Enable PWM output of the inverter
+ * @retval null
+ */
 void inverter_enable(){
 	if(inverter.error==no_error){
 		inverter.state=operation_enabled;
@@ -302,18 +302,18 @@ void inverter_disable(){
 	inverter.speed_ramp_generator_data.previous_output=0.0f;
 
 	if(!(inverter.control_mode==foc_torque || inverter.control_mode==sensorless_torque || inverter.control_mode==open_loop_current)){//zero out torque setpoints in position/speed modes only
-	inverter.torque_current_setpoint=0.0f;
-	inverter.field_current_setpoint=0.0f;
+		inverter.torque_current_setpoint=0.0f;
+		inverter.field_current_setpoint=0.0f;
 	}
 	HAL_GPIO_WritePin(ETH_RESET_GPIO_Port, ETH_RESET_Pin,0);
 	//HAL_GPIO_WritePin(SOFTSTART_GPIO_Port, SOFTSTART_Pin, 0);
 }
 
 /**
-  * @brief  Trips the inverter with appropriate error
-  * @param  error to set, DO NOT write no_error(0) here
-  * @retval null
-  */
+ * @brief  Trips the inverter with appropriate error
+ * @param  error to set, DO NOT write no_error(0) here
+ * @retval null
+ */
 void inverter_error_trip(uint16_t error_number){
 	inverter_disable();
 	inverter.state=faulted;
@@ -369,7 +369,7 @@ HAL_StatusTypeDef HOT_ADC_read(){
 	HAL_GPIO_WritePin(ADC_CS_GPIO_Port, ADC_CS_Pin, 0);
 	HAL_StatusTypeDef  status;
 	if(inverter.HOT_ADC.measurement_loop_iteration%2==0){
-	status=HAL_SPI_TransmitReceive_DMA(&hspi2, inverter.HOT_ADC.HOT_ADC_tx_buffer, inverter.HOT_ADC.HOT_ADC_rx_buffer, 2);
+		status=HAL_SPI_TransmitReceive_DMA(&hspi2, inverter.HOT_ADC.HOT_ADC_tx_buffer, inverter.HOT_ADC.HOT_ADC_rx_buffer, 2);
 	}else{
 		status=HAL_SPI_TransmitReceive_DMA(&hspi2, inverter.HOT_ADC.HOT_ADC_tx_buffer+2, inverter.HOT_ADC.HOT_ADC_rx_buffer, 2);
 	}
@@ -503,10 +503,10 @@ float constrainf(float number, float min, float max){
 }
 
 /**
-  * @brief  Synthesize output voltage with PWM using sinusoidal PWM algorythm
-  * @param  vector of the output voltage
-  * @retval null
-  */
+ * @brief  Synthesize output voltage with PWM using sinusoidal PWM algorythm
+ * @param  vector of the output voltage
+ * @retval null
+ */
 void output_sine_pwm(output_voltage_vector_t voltage_vector){
 	//float cos_u = 0;
 	//float cos_v = 0;
@@ -514,46 +514,46 @@ void output_sine_pwm(output_voltage_vector_t voltage_vector){
 	//if(voltage_vector.angle>6.28f){ //some software error occured, trip inverter
 	//	inverter_error_trip(internal_software);
 	//}else{
-		//prevent writing duty cycle over 100% to the timer when voltage higher than inverter DC-bus
+	//prevent writing duty cycle over 100% to the timer when voltage higher than inverter DC-bus
 
-		inverter.U_U = (voltage_vector.U_Alpha);
-		inverter.U_V = ((-0.5f *voltage_vector.U_Alpha)+(0.86602*voltage_vector.U_Beta));
-		inverter.U_W = ((-0.5f *voltage_vector.U_Alpha)-(0.86602*voltage_vector.U_Beta));
-		//saturation voltage compensation
+	inverter.U_U = (voltage_vector.U_Alpha);
+	inverter.U_V = ((-0.5f *voltage_vector.U_Alpha)+(0.86602*voltage_vector.U_Beta));
+	inverter.U_W = ((-0.5f *voltage_vector.U_Alpha)-(0.86602*voltage_vector.U_Beta));
+	//saturation voltage compensation
 
-		/*if(inverter.U_U>0.0f){inverter.U_U+=U_sat;}
+	/*if(inverter.U_U>0.0f){inverter.U_U+=U_sat;}
 		if(inverter.U_U<0.0f){inverter.U_U-=U_sat;}
 		if(inverter.U_V>0.0f){inverter.U_V+=U_sat;}
 		if(inverter.U_V<0.0f){inverter.U_V-=U_sat;}
 		if(inverter.U_W>0.0f){inverter.U_W+=U_sat;}
 		if(inverter.U_W<0.0f){inverter.U_W-=U_sat;}
-		 */
-		if(inverter.I_U>=0.0f){inverter.U_U+=U_sat;}
-		if(inverter.I_U<0.0f){inverter.U_U-=U_sat;}
-		if(inverter.I_V>=0.0f){inverter.U_V+=U_sat;}
-		if(inverter.I_V<0.0f){inverter.U_V-=U_sat;}
-		if(inverter.I_W>=0.0f){inverter.U_W+=U_sat;}
-		if(inverter.I_W<0.0f){inverter.U_W-=U_sat;}
+	 */
+	if(inverter.I_U>=0.0f){inverter.U_U+=U_sat;}
+	if(inverter.I_U<0.0f){inverter.U_U-=U_sat;}
+	if(inverter.I_V>=0.0f){inverter.U_V+=U_sat;}
+	if(inverter.I_V<0.0f){inverter.U_V-=U_sat;}
+	if(inverter.I_W>=0.0f){inverter.U_W+=U_sat;}
+	if(inverter.I_W<0.0f){inverter.U_W-=U_sat;}
 
-		float U_U=((inverter.U_U/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f))+inverter.duty_cycle_limit/2.0f;
-		float U_V=((inverter.U_V/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f))+inverter.duty_cycle_limit/2.0f;
-		float U_W=((inverter.U_W/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f))+inverter.duty_cycle_limit/2.0f;
+	float U_U=((inverter.U_U/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f))+inverter.duty_cycle_limit/2.0f;
+	float U_V=((inverter.U_V/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f))+inverter.duty_cycle_limit/2.0f;
+	float U_W=((inverter.U_W/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f))+inverter.duty_cycle_limit/2.0f;
 
-		if(U_U>inverter.duty_cycle_limit){U_U=inverter.duty_cycle_limit;}
-		if(U_V>inverter.duty_cycle_limit){U_V=inverter.duty_cycle_limit;}
-		if(U_W>inverter.duty_cycle_limit){U_W=inverter.duty_cycle_limit;}
+	if(U_U>inverter.duty_cycle_limit){U_U=inverter.duty_cycle_limit;}
+	if(U_V>inverter.duty_cycle_limit){U_V=inverter.duty_cycle_limit;}
+	if(U_W>inverter.duty_cycle_limit){U_W=inverter.duty_cycle_limit;}
 
-		TIM1->CCR1=(uint16_t)U_U;
-		TIM1->CCR2=(uint16_t)U_V;
-		TIM1->CCR3=(uint16_t)U_W;
+	TIM1->CCR1=(uint16_t)U_U;
+	TIM1->CCR2=(uint16_t)U_V;
+	TIM1->CCR3=(uint16_t)U_W;
 	//}
 }
 
 /**
-  * @brief  Synthesize output voltage with PWM using space vector PWM algorythm, used version from SimpleFOC project
-  * @param  vector of the output voltage
-  * @retval null
-  */
+ * @brief  Synthesize output voltage with PWM using space vector PWM algorythm, used version from SimpleFOC project
+ * @param  vector of the output voltage
+ * @retval null
+ */
 void output_svpwm(output_voltage_vector_t voltage_vector){
 	//get angle of voltage vector
 	float angle_el = atan2f(-voltage_vector.U_Beta,-voltage_vector.U_Alpha)+_PI+0.00001f;
@@ -656,10 +656,10 @@ void RMS_current_calculation_loop(void){
 }
 
 /**
-  * @brief  Slow control loop running every n cycles of main motor control loop. Used for speed and position controllers and ramp generators
-  * @param  null
-  * @retval null
-  */
+ * @brief  Slow control loop running every n cycles of main motor control loop. Used for speed and position controllers and ramp generators
+ * @param  null
+ * @retval null
+ */
 void motor_control_loop_slow(void){
 	//position controller
 	if(inverter.control_mode==foc_position_profile || inverter.control_mode==foc_position_interpolated ){
@@ -685,10 +685,10 @@ void motor_control_loop_slow(void){
 }
 
 /**
-  * @brief  This function inhibits or trips the inverter in case of undervoltage, also controls softstart relay
-  * @param  null
-  * @retval null
-  */
+ * @brief  This function inhibits or trips the inverter in case of undervoltage, also controls softstart relay
+ * @param  null
+ * @retval null
+ */
 void DCBus_voltage_check(void){
 	if((inverter.DCbus_voltage>=inverter.undervoltage_limit+10.0f)&& !osTimerIsRunning(timerSoftstartHandle)&&(inverter.state==switch_on_disabled || inverter.state==faulted)){
 		//start timer to delay softstart relay and inverter readiness
@@ -762,29 +762,32 @@ void motor_control_loop(void){
 	//inverter.output_power_active=inverter.output_voltage*inverter.I_q_filtered;
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,1);
 
-	int32_t last_position = inverter.encoder_raw_position;
 	//calculate/get rotor electric angle from encoder
 	if(parameter_set.motor_feedback_type==abz_encoder){abz_encoder_calculate_abs_position();}
 	if(parameter_set.motor_feedback_type==mitsubishi_encoder){mitsubishi_encoder_process_data();}
 	if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_process_position();}
-
-	update_axis_position(last_position - inverter.encoder_raw_position);
 
 	//calculate torque angle
 	if(inverter.stator_electric_angle-inverter.rotor_electric_angle>_PI){inverter.torque_angle=(inverter.stator_electric_angle-inverter.rotor_electric_angle) - _2_PI;}
 	else if(inverter.stator_electric_angle-inverter.rotor_electric_angle<(-_PI)){inverter.torque_angle=inverter.stator_electric_angle-inverter.rotor_electric_angle + _2_PI;}
 	else{inverter.torque_angle=inverter.stator_electric_angle-inverter.rotor_electric_angle;}
 
+
+
 	//calculate rotor speed
-	if(inverter.speed_measurement_loop_i>=10){
+	if(inverter.speed_measurement_loop_i>=8){
+		int32_t last_position = inverter.encoder_raw_position;
+		update_axis_position(last_position - inverter.encoder_raw_position);
+
 		if(inverter.last_rotor_electric_angle==0.0f){inverter.last_rotor_electric_angle=inverter.rotor_electric_angle;} //this prevents overspeed detection on first slow loop execution
 		float speed_calc_angle_delta=inverter.rotor_electric_angle-inverter.last_rotor_electric_angle;
-		inverter.rotor_speed=((speed_calc_angle_delta)/parameter_set.motor_pole_pairs)*9.549296f*(inverter.control_loop_freq/10.0f);
+		inverter.rotor_speed=((speed_calc_angle_delta)/parameter_set.motor_pole_pairs)*9.549296f*(inverter.control_loop_freq/8.0f);
 		//speed(rpm) = ((x(deg)/polepairs)/360deg)/(0,002(s)/60s)
-		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(inverter.control_loop_freq/10.0f);
+		float theoretical_encoder_speed=(_2_PI/parameter_set.motor_pole_pairs)*9.549296*(inverter.control_loop_freq/8.0f);
 		if(inverter.rotor_speed>theoretical_encoder_speed/2.0f){inverter.rotor_speed-=theoretical_encoder_speed;}if(inverter.rotor_speed<(-theoretical_encoder_speed/2.0f)){inverter.rotor_speed+=theoretical_encoder_speed;}
 		inverter.last_rotor_electric_angle = inverter.rotor_electric_angle;
 		motor_control_loop_slow();
+
 		inverter.speed_measurement_loop_i=0;
 	}
 	inverter.speed_measurement_loop_i++;
@@ -864,13 +867,14 @@ void motor_control_loop(void){
 	HAL_GPIO_WritePin(ETH_CS_GPIO_Port, ETH_CS_Pin,0);
 
 	//start data tansaction with encoder
-		if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_request_position();}
-		if(parameter_set.motor_feedback_type==panasonic_minas_encoder){panasonic_encoder_read_position();}
-		if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
+	if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_request_position();}
+	if(parameter_set.motor_feedback_type==panasonic_minas_encoder){panasonic_encoder_read_position();}
+	if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
 
 	if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){
 		mitsubishi_encoder_send_command();
 	}
+
 
 	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint32_t)(((inverter.I_q+10.0f)/20.0f)*4096.0f));
 	//HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, inverter.encoder_raw_position);
