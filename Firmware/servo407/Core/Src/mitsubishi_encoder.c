@@ -48,12 +48,12 @@ void mitsubishi_motor_identification(void){
 	}else{
 		if(mitsubishi_encoder_data.motor_data_response_packet[0]==0x7A ){
 			//if response is valid decode motor data and encoder resolution
-			if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3D){mitsubishi_encoder_data.encoder_resolution=8192;set_ctrl_loop_frequency(2000);mitsubishi_encoder_data.motor_family=j2_13bit;} //j2 encoder
+			if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3D){mitsubishi_encoder_data.encoder_resolution=8192;set_encoder_frequency(2000);mitsubishi_encoder_data.motor_family=j2_13bit;} //j2 encoder
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x3C){mitsubishi_encoder_data.encoder_resolution=16384;mitsubishi_encoder_data.motor_family=j2_14bit;} //j2 encoder
-			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x41){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=j2super;} //j2super 17 bit encoders
-			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x4B){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=je;} //mr-je/mr-e encoder 17bit
+			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x41){mitsubishi_encoder_data.encoder_resolution=65535;set_encoder_frequency(16000);mitsubishi_encoder_data.motor_family=j2super;} //j2super 17 bit encoders
+			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x4B){mitsubishi_encoder_data.encoder_resolution=65535;set_encoder_frequency(16000);mitsubishi_encoder_data.motor_family=je;} //mr-je/mr-e encoder 17bit
 			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x44){mitsubishi_encoder_data.encoder_resolution=65535;mitsubishi_encoder_data.motor_family=j3j4;} //j3 and j4 encoder have the same encoder id but j4 claims 22bit resolution, maybe different command is needed
-			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x8F){mitsubishi_encoder_data.encoder_resolution=67108864;mitsubishi_encoder_data.motor_family=j5;} //very limited support
+			else if(mitsubishi_encoder_data.motor_data_response_packet[2]==0x8F){mitsubishi_encoder_data.encoder_resolution=67108864;set_encoder_frequency(8000);mitsubishi_encoder_data.motor_family=j5;} //very limited support
 			else{mitsubishi_encoder_data.encoder_resolution=131072;mitsubishi_encoder_data.motor_family=unknown_family;}
 			mitsubishi_encoder_data.motor_series_id=mitsubishi_encoder_data.motor_data_response_packet[3];
 			//determine speed and power

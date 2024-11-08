@@ -175,6 +175,7 @@ extern inverter_error_history_t inverter_error_history;
 uint16_t get_CIA402_error_number(inverter_error_t error_num);
 void inverter_setup(void);
 void set_ctrl_loop_frequency(uint16_t frequency);
+void set_encoder_frequency(uint16_t frequency);
 void inverter_enable(void);
 void inverter_disable(void);
 void inverter_error_trip(uint16_t error_number);

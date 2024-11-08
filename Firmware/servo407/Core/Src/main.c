@@ -81,6 +81,7 @@ TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
 TIM_HandleTypeDef htim5;
 TIM_HandleTypeDef htim6;
+TIM_HandleTypeDef htim7;
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
@@ -165,6 +166,7 @@ static void MX_SPI3_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM5_Init(void);
 static void MX_TIM6_Init(void);
+static void MX_TIM7_Init(void);
 void StartDefaultTask(void *argument);
 void StartTaskModbusUSB(void *argument);
 void uiTaskStart(void *argument);
@@ -229,6 +231,7 @@ int main(void)
   MX_TIM2_Init();
   MX_TIM5_Init();
   MX_TIM6_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
 
@@ -1004,6 +1007,44 @@ static void MX_TIM6_Init(void)
 }
 
 /**
+  * @brief TIM7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM7_Init(void)
+{
+
+  /* USER CODE BEGIN TIM7_Init 0 */
+
+  /* USER CODE END TIM7_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM7_Init 1 */
+
+  /* USER CODE END TIM7_Init 1 */
+  htim7.Instance = TIM7;
+  htim7.Init.Prescaler = 0;
+  htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim7.Init.Period = 10499;
+  htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
+  if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim7, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM7_Init 2 */
+
+  /* USER CODE END TIM7_Init 2 */
+
+}
+
+/**
   * @brief USART1 Initialization Function
   * @param None
   * @retval None
@@ -1462,6 +1503,12 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   if(htim->Instance == TIM6) {
 	  canopen_app_interrupt();
   }
+  if(htim->Instance == TIM7) {
+	  if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){
+	  		mitsubishi_encoder_send_command();
+	  	}
+
+    }
   /* USER CODE END Callback 1 */
 }
 

@@ -19,6 +19,7 @@ extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim5;
+extern TIM_HandleTypeDef htim7;
 extern ADC_HandleTypeDef hadc2;
 extern SPI_HandleTypeDef hspi2;
 extern DAC_HandleTypeDef hdac;
@@ -221,6 +222,7 @@ void inverter_setup(void){
 	if(parameter_set.motor_feedback_type == abz_encoder){HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);} //enable abz encoder inputs
 	if(parameter_set.motor_feedback_type == delta_encoder && delta_encoder_data.encoder_state== encoder_eeprom_reading){delta_encoder_init();}
 	HAL_TIM_Base_Start_IT(&htim5); //start main motor control loop
+	HAL_TIM_Base_Start_IT(&htim7); //start encoder loop
 	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1); //start braking chopper
 	HAL_TIM_Base_Start(&htim4);TIM4->CNT=32768; //start STEP input timer/counter
 	HAL_DAC_Start(&hdac, DAC_CHANNEL_1);
@@ -237,6 +239,10 @@ void set_ctrl_loop_frequency(uint16_t frequency){
 	inverter.speed_ramp_generator_data.sampling_time=1.0f/(frequency/10.0f);
 	axis.position_controller_data.sampling_time=(1.0f/inverter.control_loop_freq)*10.0f;
 	update_constant_values();
+}
+
+void set_encoder_frequency(uint16_t frequency){
+	TIM7->ARR=(84000000/(uint32_t)frequency)-1;
 }
 /**
  * @brief  Enable PWM output of the inverter
@@ -870,11 +876,6 @@ void motor_control_loop(void){
 	if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_request_position();}
 	if(parameter_set.motor_feedback_type==panasonic_minas_encoder){panasonic_encoder_read_position();}
 	if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
-
-	if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){
-		mitsubishi_encoder_send_command();
-	}
-
 
 	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint32_t)(((inverter.I_q+10.0f)/20.0f)*4096.0f));
 	//HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, inverter.encoder_raw_position);
