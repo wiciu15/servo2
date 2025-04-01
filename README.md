@@ -53,5 +53,11 @@ or indirectly by this software/hardware. The board is mains-powered. High voltag
 - embedded printf implementation https://github.com/mpaland/printf
 - FreeRTOS
 
+## Hardware modification
+MOdifications of rev.A of CPU board
+- data/command line to OLED screen(PA15)
+- bridge between tim1break input (PE15) and overcurrent interrupt(PA1)(break interrupt was not working i dont know why just bridged it to EXTI on other pin).
+- OLED CLK is moved to PA5, PB3 is used as DEBUG_SWO.
+- added filter to GND on FAULT line from power board to enchance noise rejection from EMI(i was getting random short-circuit errors).
 
 
