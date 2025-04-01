@@ -564,7 +564,7 @@ void output_svpwm(output_voltage_vector_t voltage_vector){
 	//get angle of voltage vector
 	float angle_el = atan2f(-voltage_vector.U_Beta,-voltage_vector.U_Alpha)+_PI+0.00001f;
 	//calculate lenght(voltage) in timer units
-	float voltage_vector_len=(inverter.output_voltage/inverter.DCbus_voltage)*inverter.duty_cycle_limit/2.0f;
+	float voltage_vector_len=(inverter.output_voltage/inverter.DCbus_voltage)*inverter.duty_cycle_limit;
 	//get sector of voltage
 	uint8_t sector = floor(angle_el / _PI_3) + 1;
 	// calculate T1 and T2 times in timer units
@@ -614,7 +614,7 @@ void output_svpwm(output_voltage_vector_t voltage_vector){
 		U_W = 0;
 	}
 	//dead time and forward drop compensation
-	float offset=(DT_COMP_VOLT/inverter.DCbus_voltage)*(inverter.duty_cycle_limit/2.0f);
+	float offset=(DT_COMP_VOLT/inverter.DCbus_voltage)*(inverter.duty_cycle_limit);
 	if(inverter.I_U>0.0f){U_U+=offset*constrainf(inverter.I_U/DT_COMP_CURR,0.0f,1.0f);}
 	if(inverter.I_U<0.0f){U_U-=offset*constrainf(-inverter.I_U/DT_COMP_CURR,0.0f,1.0f);}
 	if(inverter.I_V>0.0f){U_V+=offset*constrainf(inverter.I_V/DT_COMP_CURR,0.0f,1.0f);}

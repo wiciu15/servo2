@@ -45,7 +45,7 @@ void delta_encoder_read_position(){
 		delta_encoder_data.last_encoder_hall_sensors=delta_encoder_data.encoder_hall_sensors;
 		delta_encoder_data.encoder_hall_sensors=delta_encoder_data.motor_response[0]>>1 & 0b00000111; //bits 3-1 represents motor hall sensors WVU
 		delta_encoder_data.encoder_hall_sensors_decimal=(delta_encoder_data.encoder_hall_sensors&0x01)+((delta_encoder_data.encoder_hall_sensors>>1 & 0x01)*10)+(delta_encoder_data.encoder_hall_sensors>>2 )*100;
-		if((((delta_encoder_data.encoder_hall_sensors&0x01)^(delta_encoder_data.last_encoder_hall_sensors&0x01))!=0)&&((delta_encoder_data.encoder_hall_sensors&0b00000110)==0b00000100)){ //if hall U changed while W active and V inactive set electric angle to 0
+		if((((delta_encoder_data.encoder_hall_sensors&0x01)^(delta_encoder_data.last_encoder_hall_sensors&0x01))!=0)&&((delta_encoder_data.encoder_hall_sensors&0b00000110)==0b00000100)&&delta_encoder_data.position_offset==0){ //if hall U changed while W active and V inactive set electric angle to 0
 			//@TODO: for the first hall sensor edge not always hits 0 deg, needs more investigation
 			//if(delta_encoder_data.position_offset==0)
 			delta_encoder_data.position_offset=delta_encoder_data.encoder_position;

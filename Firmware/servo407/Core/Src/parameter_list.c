@@ -160,7 +160,7 @@ HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue
 	case 7:{int16_t value = (int16_t)(((int32_t)axis.actual_position>>16) & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
 	case 8:{int16_t value = (int16_t)(axis.temp_target_position & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
 	case 9:{int16_t value = (int16_t)((axis.temp_target_position>>16) & 0xFFFF);memcpy(ptrToReturnValue,&value,2);break;}
-	case 10:{float value=(inverter.output_voltage/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
+	case 10:{float value=(inverter.output_voltage*1.2269f);memcpy(ptrToReturnValue,&value,4);break;} //Sqrt3/sqrt2 convert l-n pk-pk to l-l RMS
 	case 11:{float value=(inverter.DCbus_voltage);memcpy(ptrToReturnValue,&value,4);break;}
 
 	case 20:{uint16_t value=inverter.error;memcpy(ptrToReturnValue,&value,2);break;}
@@ -194,7 +194,7 @@ HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue
 	case 34:{float value=(inverter.field_current_setpoint/parameter_set.motor_nominal_current)*100.0f;memcpy(ptrToReturnValue,&value,4);break;}
 	case 35:{float value=(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq));memcpy(ptrToReturnValue,&value,4);break;}
 	case 36:{float value=(inverter.stator_field_speed/(_2_PI/inverter.control_loop_freq));memcpy(ptrToReturnValue,&value,4);break;} //@TODO:implement target open loop speed
-	case 37:{float value=(inverter.output_voltage/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
+	case 37:{float value=(inverter.output_voltage*1.2269f);memcpy(ptrToReturnValue,&value,4);break;} //(Sqrt3/sqrt2) convert l-n pk-pk to l-l RMS
 
 	case 40:{uint16_t value=(inverter.encoder_raw_position);memcpy(ptrToReturnValue,&value,2);break;}
 	case 41:{float value=(inverter.stator_electric_angle*(180.0f/_PI));memcpy(ptrToReturnValue,&value,4);break;}
@@ -218,7 +218,7 @@ HAL_StatusTypeDef parameter_read(parameter_t * par , uint32_t * ptrToReturnValue
 	case 210:{uint16_t value=parameter_set.motor_pole_pairs;memcpy(ptrToReturnValue,&value,2);break;}
 	case 211:{float value=(parameter_set.motor_nominal_current/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
 	case 212:{float value=(parameter_set.motor_max_current/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
-	case 213:{float value=(parameter_set.motor_voltage/_SQRT2);memcpy(ptrToReturnValue,&value,4);break;}
+	case 213:{float value=(parameter_set.motor_voltage*1.2269f);memcpy(ptrToReturnValue,&value,4);break;}
 	case 214:{float value=(parameter_set.motor_base_frequency);memcpy(ptrToReturnValue,&value,4);break;}
 	case 215:{float value=(parameter_set.motor_nominal_torque);memcpy(ptrToReturnValue,&value,4);break;}
 	case 216:{float value=(parameter_set.motor_nominal_speed);memcpy(ptrToReturnValue,&value,4);break;}
@@ -373,7 +373,7 @@ HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 					float value = 0.0f;
 					if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
 					if(inverter.control_mode==manual){
-						inverter.output_voltage = (value*_SQRT2);
+						inverter.output_voltage = (value/1.2269f); //Sqrt3/sqrt2 convert l-n pk-pk to l-l RMS
 					}break;
 				}
 		case 100: //control mode
@@ -454,7 +454,7 @@ HAL_StatusTypeDef parameter_write(parameter_t * par, uint32_t * pValue){
 		{
 			float value = 0.0f;
 			if(prepare_received_data(par, pValue, &value)!=HAL_OK){break;}
-			parameter_set.motor_voltage=value*_SQRT2;
+			parameter_set.motor_voltage=value/1.2269f; //Sqrt3/sqrt2 convert l-n pk-pk to l-l RMS
 			break;}
 		case 214: //base frequency
 		{

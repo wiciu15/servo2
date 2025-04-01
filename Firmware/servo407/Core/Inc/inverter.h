@@ -14,7 +14,7 @@
 #define ADC_SAMPLES_PER_AMP 60.0f //number of ADC samples read for 1A of phase current
 #define CURRENT_RMS_SAMPLING_COUNT 500 //(2*pwm frequency)/this define=rms current sampling frequency, for 500 = 32 calculations per second
 #define DEFAULT_CTRL_LOOP_FREQ 8000
-#define DT_COMP_VOLT 2.0f //nominal igbt saturation voltage by which to compensate output voltage
+#define DT_COMP_VOLT 1.0f //nominal igbt saturation voltage by which to compensate output voltage
 #define DT_COMP_CURR 0.5f //phase output current at which full igbt saturation voltage is compensated from output voltage
 
 #define _2_PI 6.283185f
