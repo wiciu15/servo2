@@ -69,6 +69,10 @@ void delta_encoder_read_position(){
 		else if(-accel > delta_encoder_data.max_accel)delta_encoder_data.max_accel = -accel;
 		delta_encoder_data.accel = accel;
 		if(delta_encoder_data.accel > 1000)delta_encoder_data.excessive_acceleration_error_count++;
+		if(delta_encoder_data.excessive_acceleration_error_count>5){
+			inverter_error_trip(encoder_error_mechanical);
+			delta_encoder_data.excessive_acceleration_error_count=0;
+		}
 		delta_encoder_data.last_speed=delta_encoder_data.speed;
 
 
