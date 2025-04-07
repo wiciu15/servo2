@@ -875,7 +875,7 @@ void motor_control_loop(void){
 	//start data tansaction with encoder
 	if(parameter_set.motor_feedback_type==tamagawa_encoder){tamagawa_encoder_request_position();}
 	if(parameter_set.motor_feedback_type==panasonic_minas_encoder){panasonic_encoder_read_position();}
-	if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
+
 
 	HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, (uint32_t)(((inverter.I_q+10.0f)/20.0f)*4096.0f));
 	//HAL_DAC_SetValue(&hdac, DAC_CHANNEL_1, DAC_ALIGN_12B_R, inverter.encoder_raw_position);

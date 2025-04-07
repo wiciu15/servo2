@@ -18,9 +18,14 @@ typedef struct _delta_encoder_data_t {
 	uint32_t position_offset;
 	float motor_electric_angle;
 	uint32_t last_encoder_position;
+	int32_t speed;
+	int32_t last_speed;
+	int32_t accel;
+	int32_t max_accel;
 	uint8_t checksum_error_count;
 	uint8_t excessive_acceleration_error_count;
 	uint8_t communication_error_count;
+	uint16_t rxOkCount;
 	uint8_t motor_eeprom[20];
 	uint8_t motor_response[5];
 	uint8_t encoder_command;

@@ -1507,6 +1507,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	  if((parameter_set.motor_feedback_type==mitsubishi_encoder) && (mitsubishi_encoder_data.encoder_state!=encoder_error_no_communication || mitsubishi_encoder_data.encoder_state!=encoder_error_cheksum )){
 	  		mitsubishi_encoder_send_command();
 	  	}
+	  if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
 
     }
   /* USER CODE END Callback 1 */
