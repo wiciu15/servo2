@@ -19,6 +19,8 @@ tamagawa_encoder_data_t tamagawa_encoder_data={
 		.encoder_command=0x1A,
 		//command 0x02 gives position[2,3,4] and cheksum[5], 0x1A gives two positions, 0xC2 resets one-turn data, 0x92 gives two null bytes and checksum
 		//five bits of command, commands are listed in https://www.ti.com/lit/ug/tidue74d/tidue74d.pdf + 010 as sink
+		//status word[1] = 32 if ok 48 if error ?????
+		//alarm word [9] = 192 if ok????
 		.encoder_position=0,
 		.encoder_state=encoder_eeprom_reading,
 		.excessive_acceleration_error_count=0,
