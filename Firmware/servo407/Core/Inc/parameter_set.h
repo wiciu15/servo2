@@ -11,7 +11,7 @@
 #include "main.h"
 #include "inverter.h"
 
-typedef enum {no_feedback,abz_encoder,mitsubishi_encoder,tamagawa_encoder,delta_encoder,panasonic_minas_encoder}motor_feedback_type_t;
+typedef enum {no_feedback,abz_encoder,mitsubishi_encoder,tamagawa_encoder,delta_encoder,panasonic_minas_encoder,omron_omnucg_encoder}motor_feedback_type_t;
 typedef enum _operation_mode_t {
 	manual=-5,
 	u_f=-4,

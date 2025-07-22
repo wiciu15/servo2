@@ -34,6 +34,7 @@
 #include "mitsubishi_encoder.h"
 #include "tamagawa_encoder.h"
 #include "panasonic_encoder.h"
+#include "omnucg_encoder.h"
 #include "abz_encoder.h"
 #include "delta_encoder.h"
 #include "parameter_set.h"

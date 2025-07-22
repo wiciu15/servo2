@@ -1508,6 +1508,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 	  		mitsubishi_encoder_send_command();
 	  	}
 	  if(parameter_set.motor_feedback_type==delta_encoder){delta_encoder_read_position();}
+	  if(parameter_set.motor_feedback_type==omron_omnucg_encoder){omnucg_encoder_read_position();}
 
     }
   /* USER CODE END Callback 1 */
